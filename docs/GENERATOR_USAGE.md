@@ -170,3 +170,70 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-genera
 5. Add --output <path> override.
 6. Add real user STL sample workflow documentation.
 7. Add installer or release packaging.
+
+## parting configuration
+
+The project JSON may include an optional parting section.
+
+When parting is omitted, the generator uses the automatically detected parting plane from PartAnalysisReport.
+
+### Auto mode
+
+    "parting": {
+      "mode": "Auto"
+    }
+
+Auto mode delegates split-axis and split-offset selection to the current preliminary part analysis pipeline.
+
+### Manual mode
+
+    "parting": {
+      "mode": "Manual",
+      "axis": "X",
+      "offsetMm": 10.0
+    }
+
+Manual mode gives the user explicit control over the split used for BooleanCoreSide.stl and BooleanCavitySide.stl.
+
+Allowed axis values:
+
+- X
+- Y
+- Z
+
+Validation rules:
+
+- parting.mode must be Auto or Manual;
+- parting.axis is required for Manual mode;
+- parting.axis must be X, Y, or Z;
+- parting.offsetMm is required for Manual mode;
+- parting.offsetMm must be inside the moldBlock bounds for the selected axis.
+
+Example with moldBlock:
+
+    "moldBlock": {
+      "minXmm": -25,
+      "minYmm": -25,
+      "minZmm": -25,
+      "maxXmm": 125,
+      "maxYmm": 85,
+      "maxZmm": 55
+    },
+    "parting": {
+      "mode": "Manual",
+      "axis": "X",
+      "offsetMm": 10.0
+    }
+
+The current split flow is:
+
+    binary STL
+    + moldBlock
+    + parting mode
+    + parting axis/offset
+    -> split mold block halves
+    -> PicoGK voxel boolean subtraction
+    -> BooleanCoreSide.stl
+    -> BooleanCavitySide.stl
+
+Manual parting does not yet implement shutoff surfaces, side actions, slides, lifters, gate design, runner design, sprue design, or manufacturing certification.

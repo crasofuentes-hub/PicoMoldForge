@@ -158,3 +158,53 @@ The next major development step is to move from preliminary diagnostic geometry 
 ## License
 
 MIT License. See LICENSE.
+## Parting configuration
+
+The generator supports optional parting-plane configuration.
+
+If the parting section is omitted, PicoMoldForge uses the automatic parting result from the current part analysis pipeline.
+
+Automatic mode:
+
+    "parting": {
+      "mode": "Auto"
+    }
+
+Manual mode:
+
+    "parting": {
+      "mode": "Manual",
+      "axis": "X",
+      "offsetMm": 10.0
+    }
+
+Supported manual axes:
+
+- X
+- Y
+- Z
+
+The manual offsetMm value must be inside the configured moldBlock bounds for the selected axis.
+
+Example:
+
+    "moldBlock": {
+      "minXmm": -25,
+      "minYmm": -25,
+      "minZmm": -25,
+      "maxXmm": 125,
+      "maxYmm": 85,
+      "maxZmm": 55
+    },
+    "parting": {
+      "mode": "Manual",
+      "axis": "X",
+      "offsetMm": 10.0
+    }
+
+The parting configuration currently controls the split used to generate:
+
+- BooleanCoreSide.stl
+- BooleanCavitySide.stl
+
+Manual parting is recommended when the automatic heuristic does not match the intended mold-opening strategy.
