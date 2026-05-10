@@ -11,5 +11,7 @@ public enum ExportArtifactKind
     MoldSystemDiagnostic = 6,
     FinalReport = 7,
     BooleanCavity = 8,
+    BooleanCoreSide = 9,
+    BooleanCavitySide = 10,
     Other = 99
 }

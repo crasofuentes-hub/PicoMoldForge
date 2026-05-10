@@ -68,6 +68,8 @@ $expected = @(
   "DiagnosticMesh.stl",
   "Cavity.stl",
   "BooleanCavity.stl",
+  "BooleanCoreSide.stl",
+  "BooleanCavitySide.stl",
   "Core.stl",
   "CoolingDiagnostic.stl",
   "LatticeDiagnostic.stl",

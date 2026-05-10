@@ -32,11 +32,13 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, exitCode);
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 8", output.ToString());
+            Assert.Contains("Artifacts generated: 10", output.ToString());
 
             Assert.True(File.Exists(Path.Combine(outputDirectory, "DiagnosticMesh.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "Cavity.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavity.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCoreSide.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavitySide.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "Core.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "CoolingDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "LatticeDiagnostic.stl")));

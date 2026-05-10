@@ -15,10 +15,12 @@ public sealed class FinalReportBuilderTests
 
         var manifest = builder.CreateStandardManifest("output");
 
-        Assert.Equal(7, manifest.Artifacts.Count);
+        Assert.Equal(9, manifest.Artifacts.Count);
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.DiagnosticMesh && artifact.Path.EndsWith("DiagnosticMesh.stl", StringComparison.Ordinal));
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.Cavity && artifact.Path.EndsWith("Cavity.stl", StringComparison.Ordinal));
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.BooleanCavity && artifact.Path.EndsWith("BooleanCavity.stl", StringComparison.Ordinal));
+        Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.BooleanCoreSide && artifact.Path.EndsWith("BooleanCoreSide.stl", StringComparison.Ordinal));
+        Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.BooleanCavitySide && artifact.Path.EndsWith("BooleanCavitySide.stl", StringComparison.Ordinal));
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.Core && artifact.Path.EndsWith("Core.stl", StringComparison.Ordinal));
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.CoolingDiagnostic && artifact.Path.EndsWith("CoolingDiagnostic.stl", StringComparison.Ordinal));
         Assert.Contains(manifest.Artifacts, artifact => artifact.Kind == ExportArtifactKind.LatticeDiagnostic && artifact.Path.EndsWith("LatticeDiagnostic.stl", StringComparison.Ordinal));
