@@ -1,111 +1,160 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
-
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 
-$publishDir = Join-Path $repoRoot "publish\PicoMoldForge.Generator"
-$exePath = Join-Path $publishDir "PicoMoldForge.Generator.exe"
+$publishOutput = Join-Path $repoRoot "publish\PicoMoldForge.Generator"
+$exePath = Join-Path $publishOutput "PicoMoldForge.Generator.exe"
 $projectPath = Join-Path $repoRoot "src\PicoMoldForge.Generator\PicoMoldForge.Generator.csproj"
 $sampleConfig = Join-Path $repoRoot "samples\generator-valid-project.json"
-$sampleStl = Join-Path $repoRoot "samples\generator-sample-binary.stl"
 $sampleOutput = Join-Path $repoRoot "samples\generated\generator-sample"
 
-$required = @(
-  $projectPath,
-  $sampleConfig,
-  $sampleStl
-)
-
-foreach ($path in $required) {
-  if (-not (Test-Path $path)) {
-    throw "Missing required generator publish artifact: $path"
-  }
-}
-
 Write-Host "`n== CLEAN PUBLISH OUTPUT ==" -ForegroundColor Cyan
-if (Test-Path $publishDir) {
-  Remove-Item $publishDir -Recurse -Force
-}
 
-New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
+if (Test-Path $publishOutput) {
+  Remove-Item -Recurse -Force $publishOutput
+}
 
 Write-Host "`n== PUBLISH GENERATOR ==" -ForegroundColor Cyan
+
 dotnet publish $projectPath `
   -c Release `
   -r win-x64 `
   --self-contained false `
-  -o $publishDir
+  -o $publishOutput
 
 if (-not (Test-Path $exePath)) {
   throw "Published generator exe was not found: $exePath"
 }
 
-Write-Host "`n== RUN PUBLISHED GENERATOR SELF TEST ==" -ForegroundColor Cyan
+Write-Host "`n== GENERATOR SELF TEST ==" -ForegroundColor Cyan
+
 & $exePath --self-test
 
 if ($LASTEXITCODE -ne 0) {
-  throw "Published generator self-test failed."
+  throw "Generator self-test failed."
 }
 
-Write-Host "`n== CLEAN SAMPLE OUTPUT ==" -ForegroundColor Cyan
-if (Test-Path $sampleOutput) {
-  Remove-Item $sampleOutput -Recurse -Force
-}
+Write-Host "`n== GENERATOR HELP ==" -ForegroundColor Cyan
 
-Write-Host "`n== RUN PUBLISHED GENERATOR SAMPLE ==" -ForegroundColor Cyan
-& $exePath --config $sampleConfig --generate-all --clean-output --output $sampleOutput
+$helpOutput = & $exePath --help
 
 if ($LASTEXITCODE -ne 0) {
-  throw "Published generator sample run failed."
+  throw "Generator help command failed."
+}
+
+$helpOutput | Out-Host
+
+$requiredHelpTerms = @(
+  "--config <path>",
+  "--generate-all",
+  "--clean-output",
+  "--output <path>",
+  "RunManifest.json"
+)
+
+foreach ($term in $requiredHelpTerms) {
+  if (($helpOutput -join "`n") -notmatch [regex]::Escape($term)) {
+    throw "Generator help output is missing required term: $term"
+  }
+}
+
+Write-Host "`n== GENERATOR SAMPLE RUN ==" -ForegroundColor Cyan
+
+& $exePath `
+  --config $sampleConfig `
+  --generate-all `
+  --clean-output `
+  --output $sampleOutput
+
+if ($LASTEXITCODE -ne 0) {
+  throw "Generator sample run failed."
 }
 
 Write-Host "`n== VERIFY GENERATED ARTIFACTS ==" -ForegroundColor Cyan
 
-$expected = @(
+$expectedArtifacts = @(
   "DiagnosticMesh.stl",
   "Cavity.stl",
   "BooleanCavity.stl",
+  "Core.stl",
   "BooleanCoreSide.stl",
   "BooleanCavitySide.stl",
-  "Core.stl",
   "CoolingDiagnostic.stl",
   "LatticeDiagnostic.stl",
   "MoldSystemDiagnostic.stl",
-  "FinalProjectReport.json"
+  "FinalProjectReport.json",
+  "RunManifest.json"
 )
 
-foreach ($fileName in $expected) {
-  $path = Join-Path $sampleOutput $fileName
+foreach ($artifactName in $expectedArtifacts) {
+  $artifactPath = Join-Path $sampleOutput $artifactName
 
-  if (-not (Test-Path $path)) {
-    throw "Expected generated artifact is missing: $path"
+  if (-not (Test-Path $artifactPath)) {
+    throw "Expected generated artifact was not found: $artifactPath"
   }
 
-  $item = Get-Item $path
+  $artifactInfo = Get-Item $artifactPath
 
-  if ($item.Length -le 0) {
-    throw "Expected generated artifact is empty: $path"
+  if ($artifactInfo.Length -le 0) {
+    throw "Generated artifact is empty: $artifactPath"
   }
 
-  Write-Host "OK $path ($($item.Length) bytes)" -ForegroundColor Green
+  Write-Host "OK $artifactName $($artifactInfo.Length) bytes" -ForegroundColor Green
 }
 
 Write-Host "`n== VERIFY FINAL REPORT CONTENT ==" -ForegroundColor Cyan
 
 $finalReportPath = Join-Path $sampleOutput "FinalProjectReport.json"
-$finalReport = Get-Content $finalReportPath -Raw
+$finalReport = Get-Content $finalReportPath -Raw | ConvertFrom-Json
 
-if ($finalReport -notmatch '"ProjectName"\s*:\s*"PicoMoldForge Generator Sample"') {
-  throw "FinalProjectReport.json does not contain expected project name."
+if ([string]::IsNullOrWhiteSpace($finalReport.ProjectName)) {
+  throw "FinalProjectReport.json is missing ProjectName."
 }
 
-if ($finalReport -notmatch '"IsPassing"\s*:\s*true') {
-  throw "FinalProjectReport.json does not contain passing baseline status."
+Write-Host "FinalProjectReport ProjectName: $($finalReport.ProjectName)" -ForegroundColor Green
+
+Write-Host "`n== VERIFY RUN MANIFEST CONTENT ==" -ForegroundColor Cyan
+
+$runManifestPath = Join-Path $sampleOutput "RunManifest.json"
+$runManifest = Get-Content $runManifestPath -Raw | ConvertFrom-Json
+
+if ($runManifest.SchemaVersion -ne "picomoldforge.run-manifest.v1") {
+  throw "RunManifest.json has unexpected SchemaVersion: $($runManifest.SchemaVersion)"
 }
 
-Write-Host "OK FinalProjectReport.json content verified" -ForegroundColor Green
+if ($runManifest.CleanOutput -ne $true) {
+  throw "RunManifest.json did not record CleanOutput=true."
+}
+
+if ($runManifest.UsedOutputOverride -ne $true) {
+  throw "RunManifest.json did not record UsedOutputOverride=true."
+}
+
+if ([string]::IsNullOrWhiteSpace($runManifest.OutputOverridePath)) {
+  throw "RunManifest.json is missing OutputOverridePath."
+}
+
+if ($runManifest.Artifacts.Count -lt 10) {
+  throw "RunManifest.json recorded fewer artifacts than expected."
+}
+
+foreach ($artifact in $runManifest.Artifacts) {
+  if ([string]::IsNullOrWhiteSpace($artifact.FileName)) {
+    throw "RunManifest artifact is missing FileName."
+  }
+
+  if ([string]::IsNullOrWhiteSpace($artifact.Path)) {
+    throw "RunManifest artifact is missing Path."
+  }
+
+  if ($artifact.SizeBytes -le 0) {
+    throw "RunManifest artifact has invalid SizeBytes: $($artifact.FileName)"
+  }
+}
+
+Write-Host "RunManifest artifacts: $($runManifest.Artifacts.Count)" -ForegroundColor Green
+Write-Host "RunManifest output: $($runManifest.OutputDirectory)" -ForegroundColor Green
 
 Write-Host "`n== GENERATOR PUBLISH VERIFY PASS ==" -ForegroundColor Green

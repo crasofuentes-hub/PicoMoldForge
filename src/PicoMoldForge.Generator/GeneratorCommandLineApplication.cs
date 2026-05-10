@@ -81,8 +81,16 @@ public static class GeneratorCommandLineApplication
             var runner = new GeneratorPipelineRunner();
             var result = runner.Run(input);
 
+            var manifestWriter = new GeneratorRunManifestWriter();
+            var runManifestPath = manifestWriter.Write(
+                input,
+                result,
+                cleanOutput,
+                outputOverride);
+
             output.WriteLine("Generation pipeline: PASS");
             output.WriteLine($"Final report: {result.FinalReportPath}");
+            output.WriteLine($"Run manifest: {runManifestPath}");
             output.WriteLine($"Artifacts generated: {result.GeneratedArtifacts.Count}");
 
             foreach (var artifact in result.GeneratedArtifacts)
@@ -153,6 +161,9 @@ public static class GeneratorCommandLineApplication
         output.WriteLine("  --generate-all      Generate the full preliminary output package.");
         output.WriteLine("  --clean-output      Delete the resolved output directory before generation.");
         output.WriteLine("  --output <path>     Override the outputDirectory configured in the project JSON.");
+        output.WriteLine();
+        output.WriteLine("Generated metadata:");
+        output.WriteLine("  RunManifest.json    Machine-readable manifest for each generator run.");
         output.WriteLine();
         output.WriteLine("Warning: Generated geometry is preliminary and not certified for production manufacturing.");
     }
