@@ -420,3 +420,41 @@ Recommended next DfAM development:
     -> clearance evidence
     -> manufacturability scoring
     -> stronger FinalProjectReport.json warnings and pass/fail status
+
+## clean-output option
+
+The generator supports the optional --clean-output flag.
+
+Command:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output
+
+Behavior:
+
+    --generate-all
+    -> validates input
+    -> keeps existing output files unless overwritten by new artifacts
+
+    --generate-all --clean-output
+    -> validates input
+    -> deletes the resolved output directory if it exists
+    -> regenerates the complete output package
+
+Use --clean-output when you want a deterministic fresh output folder and do not want stale artifacts from previous runs.
+
+The reusable publish verification script already uses this flag:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
+
+Expected generated artifacts after a clean run:
+
+    DiagnosticMesh.stl
+    Cavity.stl
+    BooleanCavity.stl
+    Core.stl
+    BooleanCoreSide.stl
+    BooleanCavitySide.stl
+    CoolingDiagnostic.stl
+    LatticeDiagnostic.stl
+    MoldSystemDiagnostic.stl
+    FinalProjectReport.json

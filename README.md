@@ -342,3 +342,24 @@ The current output affected by this section is:
 DfAM checks are currently preliminary rule-based checks. They do not replace mold-flow simulation, thermal simulation, stress simulation, pressure-drop validation, or qualified manufacturing review.
 
 Future DfAM work should move toward stronger geometry-derived wall-thickness checks, clearance validation, manufacturability scoring, and evidence-backed warnings.
+
+## Clean output option
+
+The generator supports an optional clean-output flag:
+
+    --clean-output
+
+Example:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output
+
+Behavior:
+
+- without --clean-output, the generator preserves existing files in the output directory;
+- with --clean-output, the generator deletes the resolved output directory before generating a fresh output package.
+
+This is useful when regenerating the same project repeatedly and avoiding stale artifacts from previous runs.
+
+The publish verification script uses --clean-output by default:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
