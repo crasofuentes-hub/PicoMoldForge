@@ -56,7 +56,7 @@ if (Test-Path $sampleOutput) {
 }
 
 Write-Host "`n== RUN PUBLISHED GENERATOR SAMPLE ==" -ForegroundColor Cyan
-& $exePath --config $sampleConfig --generate-all --clean-output
+& $exePath --config $sampleConfig --generate-all --clean-output --output $sampleOutput
 
 if ($LASTEXITCODE -ne 0) {
   throw "Published generator sample run failed."

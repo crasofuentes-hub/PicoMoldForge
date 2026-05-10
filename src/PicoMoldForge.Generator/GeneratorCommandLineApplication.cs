@@ -36,6 +36,7 @@ public static class GeneratorCommandLineApplication
     private static int RunGenerateAll(string[] args, TextWriter output, TextWriter error)
     {
         var configPath = TryReadOptionValue(args, "--config");
+        var outputOverride = TryReadOptionValue(args, "--output");
         var cleanOutput = Contains(args, "--clean-output");
 
         if (string.IsNullOrWhiteSpace(configPath))
@@ -45,10 +46,29 @@ public static class GeneratorCommandLineApplication
             return 2;
         }
 
+        if (Contains(args, "--output") && string.IsNullOrWhiteSpace(outputOverride))
+        {
+            error.WriteLine("Missing required option value: --output <path>");
+            WriteHelp(error);
+            return 2;
+        }
+
         try
         {
             var validator = new GeneratorPipelineInputValidator();
             var input = validator.Validate(configPath);
+
+            if (!string.IsNullOrWhiteSpace(outputOverride))
+            {
+                var resolvedOutputOverride = Path.GetFullPath(outputOverride);
+
+                input = input with
+                {
+                    ResolvedOutputDirectory = resolvedOutputOverride
+                };
+
+                output.WriteLine($"Output override: {resolvedOutputOverride}");
+            }
 
             output.WriteLine("Generation input validation: PASS");
 
@@ -126,12 +146,13 @@ public static class GeneratorCommandLineApplication
         output.WriteLine("Usage:");
         output.WriteLine("  PicoMoldForge.Generator.exe --self-test");
         output.WriteLine("  PicoMoldForge.Generator.exe --help");
-        output.WriteLine("  PicoMoldForge.Generator.exe --config <path> --generate-all [--clean-output]");
+        output.WriteLine("  PicoMoldForge.Generator.exe --config <path> --generate-all [--clean-output] [--output <path>]");
         output.WriteLine();
         output.WriteLine("Options:");
         output.WriteLine("  --config <path>     Path to the generator project JSON config.");
         output.WriteLine("  --generate-all      Generate the full preliminary output package.");
         output.WriteLine("  --clean-output      Delete the resolved output directory before generation.");
+        output.WriteLine("  --output <path>     Override the outputDirectory configured in the project JSON.");
         output.WriteLine();
         output.WriteLine("Warning: Generated geometry is preliminary and not certified for production manufacturing.");
     }
