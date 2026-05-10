@@ -508,3 +508,50 @@ Do not run:
     .\PicoMoldForge.Generator.exe
 
 unless you manually copied the executable to the repository root.
+
+## run manifest
+
+The generator writes a RunManifest.json file on every successful generation run.
+
+Expected file:
+
+    RunManifest.json
+
+Purpose:
+
+    config + command-line behavior + generated artifacts + warnings -> auditable run metadata
+
+Current schema version:
+
+    picomoldforge.run-manifest.v1
+
+Current top-level fields:
+
+    SchemaVersion
+    GeneratedAtUtc
+    ProjectName
+    ConfigPath
+    OutputDirectory
+    FinalReportPath
+    CleanOutput
+    UsedOutputOverride
+    OutputOverridePath
+    Artifacts
+    Warnings
+
+Each Artifacts item includes:
+
+    FileName
+    Path
+    SizeBytes
+
+Example command:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output --output ".\my-generated-output"
+
+Expected output includes:
+
+    FinalProjectReport.json
+    RunManifest.json
+
+RunManifest.json is intended for automation, regression checks, release verification, reproducibility, and audit workflows.

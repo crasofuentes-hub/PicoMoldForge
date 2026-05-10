@@ -387,3 +387,69 @@ Correct executable path from the repository root:
     .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe
 
 The executable is not located at the repository root unless manually copied there.
+
+## Boolean split mold halves
+
+PicoMoldForge now generates two additional functional-preliminary mold half artifacts:
+
+- BooleanCoreSide.stl
+- BooleanCavitySide.stl
+
+These files are generated from the configured moldBlock and the detected parting plane.
+
+The current split flow is:
+
+    input binary STL
+    + moldBlock
+    + parting axis
+    + parting plane offset
+    -> split mold block halves
+    -> voxel boolean subtraction
+    -> BooleanCoreSide.stl
+    -> BooleanCavitySide.stl
+
+Current artifact meaning:
+
+- Cavity.stl: legacy preliminary cavity diagnostic artifact.
+- Core.stl: legacy preliminary core diagnostic artifact.
+- BooleanCavity.stl: full mold block minus part voxels.
+- BooleanCoreSide.stl: split core-side mold half after part subtraction.
+- BooleanCavitySide.stl: split cavity-side mold half after part subtraction.
+
+BooleanCoreSide.stl and BooleanCavitySide.stl are more functional than the legacy Cavity.stl and Core.stl artifacts, but they are still preliminary.
+
+They do not yet include shutoff surfaces, gates, runners, sprues, cooling-channel subtraction, ejector-hole subtraction, side actions, slides, lifters, or manufacturing certification.
+
+## Run manifest
+
+Every generator run writes a machine-readable manifest:
+
+    RunManifest.json
+
+This file records execution metadata for traceability and repeatability.
+
+Current RunManifest.json fields include:
+
+- SchemaVersion
+- GeneratedAtUtc
+- ProjectName
+- ConfigPath
+- OutputDirectory
+- FinalReportPath
+- CleanOutput
+- UsedOutputOverride
+- OutputOverridePath
+- Artifacts
+- Warnings
+
+Each artifact entry includes:
+
+- FileName
+- Path
+- SizeBytes
+
+The current schema version is:
+
+    picomoldforge.run-manifest.v1
+
+RunManifest.json helps verify what the generator produced, where it wrote the output package, which command-line behavior was used, and whether stale output was cleaned before generation.
