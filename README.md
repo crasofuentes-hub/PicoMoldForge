@@ -316,3 +316,29 @@ The current output is:
 MoldSystemDiagnostic.stl is still a diagnostic visualization. It does not yet subtract ejector holes, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl.
 
 Future mold-system work should move from diagnostic geometry to real mold-half subtraction, placement strategy, clearance validation, and manufacturability checks.
+
+## DfAM configuration
+
+The generator requires a dfam section for FinalProjectReport.json generation.
+
+Example:
+
+    "dfam": {
+      "minimumWallThicknessMm": 1.5,
+      "recommendedMinimumWallThicknessMm": 1.2,
+      "usesPreliminaryGeometry": true
+    }
+
+Current dfam fields:
+
+- minimumWallThicknessMm: configured minimum wall-thickness threshold.
+- recommendedMinimumWallThicknessMm: recommended wall-thickness reference.
+- usesPreliminaryGeometry: indicates whether the current generated geometry should be treated as preliminary.
+
+The current output affected by this section is:
+
+- FinalProjectReport.json
+
+DfAM checks are currently preliminary rule-based checks. They do not replace mold-flow simulation, thermal simulation, stress simulation, pressure-drop validation, or qualified manufacturing review.
+
+Future DfAM work should move toward stronger geometry-derived wall-thickness checks, clearance validation, manufacturability scoring, and evidence-backed warnings.

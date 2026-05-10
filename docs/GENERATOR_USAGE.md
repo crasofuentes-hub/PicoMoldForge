@@ -379,3 +379,44 @@ Recommended next mold-system development:
     -> collision and clearance validation
     -> subtract functional features from mold halves
     -> emit updated functional mold-half artifacts
+
+## dfam configuration
+
+The project JSON must include a dfam section.
+
+Example:
+
+    "dfam": {
+      "minimumWallThicknessMm": 1.5,
+      "recommendedMinimumWallThicknessMm": 1.2,
+      "usesPreliminaryGeometry": true
+    }
+
+Validation rules:
+
+- dfam.minimumWallThicknessMm must be greater than zero;
+- dfam.recommendedMinimumWallThicknessMm must be greater than zero;
+- dfam.minimumWallThicknessMm should be greater than or equal to dfam.recommendedMinimumWallThicknessMm;
+- dfam.usesPreliminaryGeometry must be true or false.
+
+Current DfAM pipeline:
+
+    dfam config
+    + cooling config
+    + lattice config
+    + moldSystem config
+    -> PreliminaryDfAMAnalyzer
+    -> FinalProjectReport.json
+
+Current limitation:
+
+The DfAM report is a preliminary rule-based engineering report. It does not perform thermal simulation, pressure-drop simulation, stress simulation, mold-flow simulation, or manufacturing certification.
+
+Recommended next DfAM development:
+
+    dfam config
+    -> geometry-derived checks
+    -> wall-thickness evidence
+    -> clearance evidence
+    -> manufacturability scoring
+    -> stronger FinalProjectReport.json warnings and pass/fail status
