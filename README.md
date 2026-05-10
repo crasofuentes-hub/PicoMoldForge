@@ -363,3 +363,27 @@ This is useful when regenerating the same project repeatedly and avoiding stale 
 The publish verification script uses --clean-output by default:
 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
+
+## Output override option
+
+The generator supports an optional output override:
+
+    --output <path>
+
+Example:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output --output ".\my-generated-output"
+
+Behavior:
+
+- without --output, the generator uses outputDirectory from the project JSON;
+- with --output, the generator writes artifacts to the CLI-provided path;
+- --clean-output applies to the final resolved output path.
+
+This is useful when running the same config multiple times while writing each run to a different output folder.
+
+Correct executable path from the repository root:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe
+
+The executable is not located at the repository root unless manually copied there.

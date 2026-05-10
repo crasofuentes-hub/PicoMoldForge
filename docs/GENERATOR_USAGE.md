@@ -458,3 +458,53 @@ Expected generated artifacts after a clean run:
     LatticeDiagnostic.stl
     MoldSystemDiagnostic.stl
     FinalProjectReport.json
+
+## output override option
+
+The generator supports the optional --output <path> flag.
+
+Command:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output --output ".\my-generated-output"
+
+Behavior:
+
+    --generate-all
+    -> uses outputDirectory from the project JSON
+
+    --generate-all --output ".\my-generated-output"
+    -> overrides outputDirectory and writes artifacts to .\my-generated-output
+
+    --generate-all --clean-output --output ".\my-generated-output"
+    -> resolves the override path
+    -> deletes that output folder if it exists
+    -> regenerates the complete output package there
+
+The --output value must be provided when the --output flag is present.
+
+The reusable publish verification script now exercises --output together with --clean-output.
+
+Expected generated artifacts in the override folder:
+
+    DiagnosticMesh.stl
+    Cavity.stl
+    BooleanCavity.stl
+    Core.stl
+    BooleanCoreSide.stl
+    BooleanCavitySide.stl
+    CoolingDiagnostic.stl
+    LatticeDiagnostic.stl
+    MoldSystemDiagnostic.stl
+    FinalProjectReport.json
+
+Important:
+
+The published executable path is:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe
+
+Do not run:
+
+    .\PicoMoldForge.Generator.exe
+
+unless you manually copied the executable to the repository root.
