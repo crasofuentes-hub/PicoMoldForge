@@ -3,26 +3,19 @@ using Xunit;
 
 namespace PicoMoldForge.Generator.Tests;
 
-public sealed class GeneratorPartingOverrideConfigTests
+public sealed class GeneratorLatticeConfigTests
 {
     [Fact]
-    public void Run_WithManualPartingOverride_GeneratesSplitArtifacts()
+    public void Run_WithMissingLattice_ReturnsOne()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-manual-parting-{Guid.NewGuid():N}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-missing-lattice-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var stlPath = Path.Combine(tempDir, "part-binary.stl");
         var configPath = Path.Combine(tempDir, "project.json");
-        var outputDirectory = Path.Combine(tempDir, "output");
 
-        WriteBinaryBoxStl(stlPath, sizeX: 20.0f, sizeY: 10.0f, sizeZ: 5.0f);
-        WriteProjectConfig(configPath, "part-binary.stl", "output", """
-          "parting": {
-            "mode": "Manual",
-            "axis": "X",
-            "offsetMm": 10.0
-          }
-        """);
+        WriteBinaryTriangleStl(stlPath);
+        WriteConfig(configPath, "part-binary.stl", "output", latticeJson: null);
 
         try
         {
@@ -34,11 +27,9 @@ public sealed class GeneratorPartingOverrideConfigTests
                 output,
                 error);
 
-            Assert.Equal(0, exitCode);
-            Assert.Equal(string.Empty, error.ToString());
-            Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCoreSide.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavitySide.stl")));
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Generation pipeline: FAIL", error.ToString());
+            Assert.Contains("lattice is required", error.ToString());
         }
         finally
         {
@@ -47,20 +38,27 @@ public sealed class GeneratorPartingOverrideConfigTests
     }
 
     [Fact]
-    public void Run_WithInvalidManualPartingAxis_ReturnsOne()
+    public void Run_WithInvalidLattice_ReturnsOne()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-invalid-parting-axis-{Guid.NewGuid():N}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-invalid-lattice-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var stlPath = Path.Combine(tempDir, "part-binary.stl");
         var configPath = Path.Combine(tempDir, "project.json");
 
-        WriteBinaryBoxStl(stlPath, sizeX: 20.0f, sizeY: 10.0f, sizeZ: 5.0f);
-        WriteProjectConfig(configPath, "part-binary.stl", "output", """
-          "parting": {
-            "mode": "Manual",
-            "axis": "Q",
-            "offsetMm": 10.0
+        WriteBinaryTriangleStl(stlPath);
+        WriteConfig(configPath, "part-binary.stl", "output", """
+          "lattice": {
+            "regionName": "invalid-lattice",
+            "minXmm": 0,
+            "minYmm": 0,
+            "minZmm": 0,
+            "maxXmm": 20,
+            "maxYmm": 10,
+            "maxZmm": 10,
+            "cellSizeMm": 0,
+            "beamRadiusMm": 1,
+            "targetRelativeDensity": 0.2
           }
         """);
 
@@ -76,7 +74,8 @@ public sealed class GeneratorPartingOverrideConfigTests
 
             Assert.Equal(1, exitCode);
             Assert.Contains("Generation pipeline: FAIL", error.ToString());
-            Assert.Contains("parting.axis must be one of: X, Y, Z", error.ToString());
+            Assert.Contains("lattice validation failed", error.ToString());
+            Assert.Contains("lattice.cellSizeMm must be greater than zero", error.ToString());
         }
         finally
         {
@@ -85,57 +84,28 @@ public sealed class GeneratorPartingOverrideConfigTests
     }
 
     [Fact]
-    public void Run_WithManualPartingOffsetOutsideMoldBlock_ReturnsOne()
+    public void Run_WithValidLattice_GeneratesLatticeDiagnostic()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-invalid-parting-offset-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-
-        var stlPath = Path.Combine(tempDir, "part-binary.stl");
-        var configPath = Path.Combine(tempDir, "project.json");
-
-        WriteBinaryBoxStl(stlPath, sizeX: 20.0f, sizeY: 10.0f, sizeZ: 5.0f);
-        WriteProjectConfig(configPath, "part-binary.stl", "output", """
-          "parting": {
-            "mode": "Manual",
-            "axis": "X",
-            "offsetMm": 125.0
-          }
-        """);
-
-        try
-        {
-            using var output = new StringWriter();
-            using var error = new StringWriter();
-
-            var exitCode = GeneratorCommandLineApplication.Run(
-                new[] { "--config", configPath, "--generate-all" },
-                output,
-                error);
-
-            Assert.Equal(1, exitCode);
-            Assert.Contains("Generation pipeline: FAIL", error.ToString());
-            Assert.Contains("parting.offsetMm must be inside moldBlock bounds", error.ToString());
-        }
-        finally
-        {
-            Directory.Delete(tempDir, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void Run_WithAutoPartingConfig_UsesAutomaticPartingAndGeneratesSplitArtifacts()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-auto-parting-{Guid.NewGuid():N}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-valid-lattice-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var stlPath = Path.Combine(tempDir, "part-binary.stl");
         var configPath = Path.Combine(tempDir, "project.json");
         var outputDirectory = Path.Combine(tempDir, "output");
 
-        WriteBinaryBoxStl(stlPath, sizeX: 20.0f, sizeY: 10.0f, sizeZ: 5.0f);
-        WriteProjectConfig(configPath, "part-binary.stl", "output", """
-          "parting": {
-            "mode": "Auto"
+        WriteBinaryBoxStl(stlPath, sizeX: 20, sizeY: 10, sizeZ: 5);
+        WriteConfig(configPath, "part-binary.stl", "output", """
+          "lattice": {
+            "regionName": "custom-lattice-region",
+            "minXmm": 0,
+            "minYmm": 0,
+            "minZmm": 0,
+            "maxXmm": 30,
+            "maxYmm": 20,
+            "maxZmm": 10,
+            "cellSizeMm": 8,
+            "beamRadiusMm": 0.75,
+            "targetRelativeDensity": 0.25
           }
         """);
 
@@ -151,8 +121,7 @@ public sealed class GeneratorPartingOverrideConfigTests
 
             Assert.Equal(0, exitCode);
             Assert.Equal(string.Empty, error.ToString());
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCoreSide.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavitySide.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "LatticeDiagnostic.stl")));
         }
         finally
         {
@@ -160,15 +129,19 @@ public sealed class GeneratorPartingOverrideConfigTests
         }
     }
 
-    private static void WriteProjectConfig(
+    private static void WriteConfig(
         string path,
         string inputPath,
         string outputDirectory,
-        string partingJson)
+        string? latticeJson)
     {
+        var latticeSegment = latticeJson is null
+            ? string.Empty
+            : "," + Environment.NewLine + latticeJson;
+
         File.WriteAllText(path, $$"""
         {
-          "projectName": "Parting Override Test",
+          "projectName": "Lattice Config Test",
           "inputPath": "{{inputPath}}",
           "outputDirectory": "{{outputDirectory}}",
           "mode": "Prototype",
@@ -192,6 +165,11 @@ public sealed class GeneratorPartingOverrideConfigTests
             "maxYmm": 85,
             "maxZmm": 55
           },
+          "parting": {
+            "mode": "Manual",
+            "axis": "X",
+            "offsetMm": 10.0
+          },
           "cooling": {
             "partSizeXmm": 100,
             "partSizeYmm": 60,
@@ -200,22 +178,24 @@ public sealed class GeneratorPartingOverrideConfigTests
             "channelSpacingMm": 15,
             "minimumClearanceMm": 10,
             "channelCount": 3
-          },
-          "lattice": {
-            "regionName": "default-lattice-region",
-            "minXmm": 0,
-            "minYmm": 0,
-            "minZmm": 0,
-            "maxXmm": 20,
-            "maxYmm": 10,
-            "maxZmm": 10,
-            "cellSizeMm": 10,
-            "beamRadiusMm": 1,
-            "targetRelativeDensity": 0.2
-          },
-        {{partingJson}}
+          }{{latticeSegment}}
         }
         """);
+    }
+
+    private static void WriteBinaryTriangleStl(string path)
+    {
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+
+        var header = new byte[80];
+        var headerText = "PicoMoldForge lattice config binary STL test"u8.ToArray();
+        Array.Copy(headerText, header, headerText.Length);
+        writer.Write(header);
+
+        writer.Write((uint)1);
+
+        WriteTriangle(writer, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 10, 0);
     }
 
     private static void WriteBinaryBoxStl(string path, float sizeX, float sizeY, float sizeZ)
@@ -224,7 +204,7 @@ public sealed class GeneratorPartingOverrideConfigTests
         using var writer = new BinaryWriter(stream);
 
         var header = new byte[80];
-        var headerText = "PicoMoldForge manual parting binary box STL test"u8.ToArray();
+        var headerText = "PicoMoldForge lattice config binary box STL test"u8.ToArray();
         Array.Copy(headerText, header, headerText.Length);
         writer.Write(header);
 

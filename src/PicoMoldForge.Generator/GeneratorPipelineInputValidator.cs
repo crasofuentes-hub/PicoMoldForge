@@ -53,6 +53,15 @@ public sealed class GeneratorPipelineInputValidator
                 "cooling validation failed: " + string.Join(" ", coolingErrors));
         }
 
+        var lattice = LoadLatticeConfig(document);
+        var latticeErrors = lattice.Validate();
+
+        if (latticeErrors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "lattice validation failed: " + string.Join(" ", latticeErrors));
+        }
+
         var configDirectory = Path.GetDirectoryName(resolvedConfigPath) ?? Directory.GetCurrentDirectory();
 
         var resolvedInputPath = Path.IsPathRooted(config.InputPath)
@@ -89,7 +98,28 @@ public sealed class GeneratorPipelineInputValidator
             resolvedOutputDirectory,
             moldBlockBounds,
             partingOverride,
-            cooling);
+            cooling,
+            lattice);
+    }
+
+    private static GeneratorLatticeConfig LoadLatticeConfig(JsonDocument document)
+    {
+        if (!document.RootElement.TryGetProperty("lattice", out var lattice))
+        {
+            throw new InvalidOperationException("lattice is required for LatticeDiagnostic.stl generation.");
+        }
+
+        return new GeneratorLatticeConfig(
+            RegionName: ReadRequiredString(lattice, "regionName"),
+            MinXmm: ReadRequiredDecimal(lattice, "minXmm"),
+            MinYmm: ReadRequiredDecimal(lattice, "minYmm"),
+            MinZmm: ReadRequiredDecimal(lattice, "minZmm"),
+            MaxXmm: ReadRequiredDecimal(lattice, "maxXmm"),
+            MaxYmm: ReadRequiredDecimal(lattice, "maxYmm"),
+            MaxZmm: ReadRequiredDecimal(lattice, "maxZmm"),
+            CellSizeMm: ReadRequiredDecimal(lattice, "cellSizeMm"),
+            BeamRadiusMm: ReadRequiredDecimal(lattice, "beamRadiusMm"),
+            TargetRelativeDensity: ReadRequiredDecimal(lattice, "targetRelativeDensity"));
     }
 
     private static GeneratorCoolingConfig LoadCoolingConfig(JsonDocument document)

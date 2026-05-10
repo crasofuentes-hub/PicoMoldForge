@@ -10,4 +10,5 @@ public sealed record GeneratorPipelineInput(
     string ResolvedOutputDirectory,
     MoldBlockBounds BooleanMoldBlockBounds,
     GeneratorPartingOverride? PartingOverride,
-    GeneratorCoolingConfig Cooling);
+    GeneratorCoolingConfig Cooling,
+    GeneratorLatticeConfig Lattice);

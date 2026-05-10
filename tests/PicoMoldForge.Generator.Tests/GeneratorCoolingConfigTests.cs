@@ -56,6 +56,18 @@ public sealed class GeneratorCoolingConfigTests
             "channelSpacingMm": 15,
             "minimumClearanceMm": 10,
             "channelCount": 3
+          },
+          "lattice": {
+            "regionName": "default-lattice-region",
+            "minXmm": 0,
+            "minYmm": 0,
+            "minZmm": 0,
+            "maxXmm": 20,
+            "maxYmm": 10,
+            "maxZmm": 10,
+            "cellSizeMm": 10,
+            "beamRadiusMm": 1,
+            "targetRelativeDensity": 0.2
           }
         """);
 
@@ -100,6 +112,18 @@ public sealed class GeneratorCoolingConfigTests
             "channelSpacingMm": 12,
             "minimumClearanceMm": 8,
             "channelCount": 2
+          },
+          "lattice": {
+            "regionName": "default-lattice-region",
+            "minXmm": 0,
+            "minYmm": 0,
+            "minZmm": 0,
+            "maxXmm": 20,
+            "maxYmm": 10,
+            "maxZmm": 10,
+            "cellSizeMm": 10,
+            "beamRadiusMm": 1,
+            "targetRelativeDensity": 0.2
           }
         """);
 
