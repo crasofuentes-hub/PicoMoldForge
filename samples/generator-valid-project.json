@@ -22,5 +22,10 @@
     "maxXmm": 125,
     "maxYmm": 85,
     "maxZmm": 55
+  },
+  "parting": {
+    "mode": "Manual",
+    "axis": "X",
+    "offsetMm": 10.0
   }
 }

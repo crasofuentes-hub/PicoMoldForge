@@ -2,6 +2,7 @@ using System.Text.Json;
 using PicoMoldForge.Core.BooleanGeometry;
 using PicoMoldForge.Core.Configuration;
 using PicoMoldForge.Core.Input;
+using PicoMoldForge.Core.Parting;
 
 namespace PicoMoldForge.Generator;
 
@@ -30,7 +31,9 @@ public sealed class GeneratorPipelineInputValidator
                 "Config validation failed: " + string.Join(" ", validationErrors));
         }
 
-        var moldBlockBounds = LoadMoldBlockBounds(resolvedConfigPath);
+        using var document = JsonDocument.Parse(File.ReadAllText(resolvedConfigPath));
+
+        var moldBlockBounds = LoadMoldBlockBounds(document);
         var moldBlockErrors = moldBlockBounds.Validate();
 
         if (moldBlockErrors.Count > 0)
@@ -38,6 +41,8 @@ public sealed class GeneratorPipelineInputValidator
             throw new InvalidOperationException(
                 "moldBlock validation failed: " + string.Join(" ", moldBlockErrors));
         }
+
+        var partingOverride = LoadPartingOverride(document, moldBlockBounds);
 
         var configDirectory = Path.GetDirectoryName(resolvedConfigPath) ?? Directory.GetCurrentDirectory();
 
@@ -73,13 +78,12 @@ public sealed class GeneratorPipelineInputValidator
             resolvedConfigPath,
             resolvedInputPath,
             resolvedOutputDirectory,
-            moldBlockBounds);
+            moldBlockBounds,
+            partingOverride);
     }
 
-    private static MoldBlockBounds LoadMoldBlockBounds(string resolvedConfigPath)
+    private static MoldBlockBounds LoadMoldBlockBounds(JsonDocument document)
     {
-        using var document = JsonDocument.Parse(File.ReadAllText(resolvedConfigPath));
-
         if (!document.RootElement.TryGetProperty("moldBlock", out var moldBlock))
         {
             throw new InvalidOperationException("moldBlock is required for boolean cavity generation.");
@@ -94,18 +98,100 @@ public sealed class GeneratorPipelineInputValidator
             MaxZmm: ReadRequiredDecimal(moldBlock, "maxZmm"));
     }
 
+    private static GeneratorPartingOverride? LoadPartingOverride(JsonDocument document, MoldBlockBounds moldBlockBounds)
+    {
+        if (!document.RootElement.TryGetProperty("parting", out var parting))
+        {
+            return null;
+        }
+
+        var mode = ReadRequiredString(parting, "mode");
+
+        if (string.Equals(mode, "Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (!string.Equals(mode, "Manual", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("parting.mode must be either Auto or Manual.");
+        }
+
+        var axisText = ReadRequiredString(parting, "axis");
+
+        if (!Enum.TryParse<PartingAxis>(axisText, ignoreCase: true, out var axis))
+        {
+            throw new InvalidOperationException("parting.axis must be one of: X, Y, Z.");
+        }
+
+        var offsetMm = ReadRequiredDecimal(parting, "offsetMm");
+
+        ValidatePartingOffsetInsideMoldBlock(axis, offsetMm, moldBlockBounds);
+
+        return new GeneratorPartingOverride(axis, offsetMm);
+    }
+
+    private static void ValidatePartingOffsetInsideMoldBlock(
+        PartingAxis axis,
+        decimal offsetMm,
+        MoldBlockBounds moldBlockBounds)
+    {
+        var minimum = axis switch
+        {
+            PartingAxis.X => moldBlockBounds.MinXmm,
+            PartingAxis.Y => moldBlockBounds.MinYmm,
+            PartingAxis.Z => moldBlockBounds.MinZmm,
+            _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
+        };
+
+        var maximum = axis switch
+        {
+            PartingAxis.X => moldBlockBounds.MaxXmm,
+            PartingAxis.Y => moldBlockBounds.MaxYmm,
+            PartingAxis.Z => moldBlockBounds.MaxZmm,
+            _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
+        };
+
+        if (offsetMm <= minimum || offsetMm >= maximum)
+        {
+            throw new InvalidOperationException("parting.offsetMm must be inside moldBlock bounds for the selected axis.");
+        }
+    }
+
     private static decimal ReadRequiredDecimal(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out var value))
         {
-            throw new InvalidOperationException($"moldBlock.{propertyName} is required.");
+            throw new InvalidOperationException($"{propertyName} is required.");
         }
 
         if (value.ValueKind != JsonValueKind.Number)
         {
-            throw new InvalidOperationException($"moldBlock.{propertyName} must be a number.");
+            throw new InvalidOperationException($"{propertyName} must be a number.");
         }
 
         return value.GetDecimal();
+    }
+
+    private static string ReadRequiredString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            throw new InvalidOperationException($"{propertyName} is required.");
+        }
+
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidOperationException($"{propertyName} must be a string.");
+        }
+
+        var text = value.GetString();
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new InvalidOperationException($"{propertyName} cannot be empty.");
+        }
+
+        return text;
     }
 }

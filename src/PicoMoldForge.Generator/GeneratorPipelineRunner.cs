@@ -1,3 +1,4 @@
+using Core = PicoMoldForge.Core;
 using PicoMoldForge.Core.BooleanGeometry;
 using PicoMoldForge.Core.CavityCore;
 using PicoMoldForge.Core.Cooling;
@@ -76,8 +77,8 @@ public sealed class GeneratorPipelineRunner
             SourcePath: input.ResolvedInputPath,
             OutputDirectory: input.ResolvedOutputDirectory,
             BlockBounds: input.BooleanMoldBlockBounds,
-            SplitAxis: partAnalysis.PartingPlane.Axis,
-            PartingPlaneOffsetMm: Convert.ToDecimal(partAnalysis.PartingPlane.PlaneOffsetMm),
+            SplitAxis: ResolveSplitAxis(input, partAnalysis.PartingPlane),
+            PartingPlaneOffsetMm: ResolvePartingPlaneOffset(input, partAnalysis.PartingPlane),
             VoxelSizeMm: voxelSizeMm));
 
         var coolingRequest = CreateDefaultCoolingRequest(input.ResolvedOutputDirectory);
@@ -163,6 +164,20 @@ public sealed class GeneratorPipelineRunner
             warnings);
     }
 
+
+    private static Core.Parting.PartingAxis ResolveSplitAxis(
+        GeneratorPipelineInput input,
+        Core.Parting.PartingPlaneResult automaticPartingPlane)
+    {
+        return input.PartingOverride?.Axis ?? automaticPartingPlane.Axis;
+    }
+
+    private static decimal ResolvePartingPlaneOffset(
+        GeneratorPipelineInput input,
+        Core.Parting.PartingPlaneResult automaticPartingPlane)
+    {
+        return input.PartingOverride?.OffsetMm ?? Convert.ToDecimal(automaticPartingPlane.PlaneOffsetMm);
+    }
     private static CoolingChannelRequest CreateDefaultCoolingRequest(string outputDirectory)
     {
         return new CoolingChannelRequest(
