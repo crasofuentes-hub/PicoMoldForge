@@ -1,0 +1,134 @@
+using PicoMoldForge.Core.Analysis;
+using PicoMoldForge.Core.DfAM;
+
+namespace PicoMoldForge.Core.Exports;
+
+public sealed class FinalReportBuilder
+{
+    public FinalProjectReport Build(
+        string projectName,
+        ExportManifest manifest,
+        PartAnalysisReport? partAnalysis,
+        DfAMReport? dfam,
+        BaselineStatus baseline,
+        DateTimeOffset generatedAtUtc)
+    {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            throw new ArgumentException("ProjectName is required.", nameof(projectName));
+        }
+
+        if (generatedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException("GeneratedAtUtc must use UTC offset.", nameof(generatedAtUtc));
+        }
+
+        var manifestErrors = manifest.Validate();
+
+        if (manifestErrors.Count > 0)
+        {
+            throw new ArgumentException(
+                "Invalid export manifest: " + string.Join(" ", manifestErrors),
+                nameof(manifest));
+        }
+
+        var baselineErrors = baseline.Validate();
+
+        if (baselineErrors.Count > 0)
+        {
+            throw new ArgumentException(
+                "Invalid baseline status: " + string.Join(" ", baselineErrors),
+                nameof(baseline));
+        }
+
+        var warnings = new List<string>
+        {
+            "FinalProjectReport is a preliminary engineering report and does not certify production manufacturing.",
+            "Generated STL artifacts are diagnostic or preliminary unless explicitly validated by a qualified engineer."
+        };
+
+        foreach (var manifestWarning in manifest.Warnings)
+        {
+            warnings.Add($"Manifest warning: {manifestWarning}");
+        }
+
+        if (partAnalysis is null)
+        {
+            warnings.Add("PartAnalysisReport was not provided.");
+        }
+
+        if (dfam is null)
+        {
+            warnings.Add("DfAMReport was not provided.");
+        }
+
+        if (dfam is not null && !dfam.IsSuccessful)
+        {
+            warnings.Add("DfAMReport indicates one or more blocking checks failed.");
+        }
+
+        if (!baseline.IsPassing)
+        {
+            warnings.Add("Baseline is not passing; final report must not be treated as release-ready.");
+        }
+
+        var report = new FinalProjectReport(
+            projectName,
+            generatedAtUtc,
+            manifest,
+            partAnalysis,
+            dfam,
+            baseline,
+            warnings);
+
+        var reportErrors = report.Validate();
+
+        if (reportErrors.Count > 0)
+        {
+            throw new ArgumentException(
+                "Invalid final project report: " + string.Join(" ", reportErrors));
+        }
+
+        return report;
+    }
+
+    public ExportManifest CreateStandardManifest(string outputDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+        {
+            throw new ArgumentException("Output directory is required.", nameof(outputDirectory));
+        }
+
+        var artifacts = new[]
+        {
+            CreateArtifact(ExportArtifactKind.DiagnosticMesh, outputDirectory, "DiagnosticMesh.stl", "Voxelized diagnostic mesh export.", isRequired: true),
+            CreateArtifact(ExportArtifactKind.Cavity, outputDirectory, "Cavity.stl", "Preliminary cavity diagnostic STL.", isRequired: true),
+            CreateArtifact(ExportArtifactKind.Core, outputDirectory, "Core.stl", "Preliminary core diagnostic STL.", isRequired: true),
+            CreateArtifact(ExportArtifactKind.CoolingDiagnostic, outputDirectory, "CoolingDiagnostic.stl", "Preliminary cooling diagnostic STL.", isRequired: true),
+            CreateArtifact(ExportArtifactKind.LatticeDiagnostic, outputDirectory, "LatticeDiagnostic.stl", "Preliminary lattice diagnostic STL.", isRequired: true),
+            CreateArtifact(ExportArtifactKind.MoldSystemDiagnostic, outputDirectory, "MoldSystemDiagnostic.stl", "Preliminary mold-system diagnostic STL.", isRequired: true)
+        };
+
+        var warnings = new[]
+        {
+            "Standard manifest contains expected artifact paths only; file existence is verified by later export orchestration.",
+            "Artifacts are preliminary unless validated by downstream manufacturing review."
+        };
+
+        return new ExportManifest(artifacts, warnings);
+    }
+
+    private static ExportArtifact CreateArtifact(
+        ExportArtifactKind kind,
+        string outputDirectory,
+        string fileName,
+        string description,
+        bool isRequired)
+    {
+        return new ExportArtifact(
+            kind,
+            Path.Combine(outputDirectory, fileName),
+            description,
+            isRequired);
+    }
+}

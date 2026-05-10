@@ -1,0 +1,28 @@
+# Build outputs
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Publish outputs
+publish/
+
+# Generated outputs
+samples/generated/
+output/
+
+# Logs
+*.log
+PicoGK.log
+
+# Test results
+TestResults/
+coverage/
+
+# OS
+Thumbs.db
+.DS_Store

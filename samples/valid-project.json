@@ -1,0 +1,18 @@
+{
+  "projectName": "Phase 1 Valid Config",
+  "inputPath": "samples/sample-part.stl",
+  "outputDirectory": "output",
+  "mode": "Prototype",
+  "standard": "Custom",
+  "voxelResolutionMm": 1.0,
+  "material": {
+    "name": "H13 Tool Steel",
+    "shrinkageRate": 0.011
+  },
+  "machine": {
+    "name": "Generic LPBF Machine",
+    "buildVolumeXmm": 250,
+    "buildVolumeYmm": 250,
+    "buildVolumeZmm": 300
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "projectName": "PicoMoldForge Generator Sample",
+  "inputPath": "generator-sample-binary.stl",
+  "outputDirectory": "generated/generator-sample",
+  "mode": "Prototype",
+  "standard": "Custom",
+  "voxelResolutionMm": 1.0,
+  "material": {
+    "name": "H13 Tool Steel",
+    "shrinkageRate": 0.011
+  },
+  "machine": {
+    "name": "Generic LPBF Machine",
+    "buildVolumeXmm": 250,
+    "buildVolumeYmm": 250,
+    "buildVolumeZmm": 300
+  }
+}
