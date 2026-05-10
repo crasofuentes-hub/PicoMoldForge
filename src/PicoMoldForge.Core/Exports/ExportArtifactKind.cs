@@ -10,5 +10,6 @@ public enum ExportArtifactKind
     LatticeDiagnostic = 5,
     MoldSystemDiagnostic = 6,
     FinalReport = 7,
+    BooleanCavity = 8,
     Other = 99
 }

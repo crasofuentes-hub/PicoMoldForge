@@ -67,6 +67,7 @@ Write-Host "`n== VERIFY GENERATED ARTIFACTS ==" -ForegroundColor Cyan
 $expected = @(
   "DiagnosticMesh.stl",
   "Cavity.stl",
+  "BooleanCavity.stl",
   "Core.stl",
   "CoolingDiagnostic.stl",
   "LatticeDiagnostic.stl",
