@@ -224,6 +224,11 @@ public sealed class GeneratorPartingOverrideConfigTests
             "ventDepthMm": 0.1,
             "insertClearanceMm": 2
           },
+          "dfam": {
+            "minimumWallThicknessMm": 1.5,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
+          },
         {{partingJson}}
         }
         """);

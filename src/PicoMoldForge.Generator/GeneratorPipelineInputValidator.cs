@@ -71,6 +71,15 @@ public sealed class GeneratorPipelineInputValidator
                 "moldSystem validation failed: " + string.Join(" ", moldSystemErrors));
         }
 
+        var dfam = LoadDfamConfig(document);
+        var dfamErrors = dfam.Validate();
+
+        if (dfamErrors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "dfam validation failed: " + string.Join(" ", dfamErrors));
+        }
+
         var configDirectory = Path.GetDirectoryName(resolvedConfigPath) ?? Directory.GetCurrentDirectory();
 
         var resolvedInputPath = Path.IsPathRooted(config.InputPath)
@@ -109,7 +118,21 @@ public sealed class GeneratorPipelineInputValidator
             partingOverride,
             cooling,
             lattice,
-            moldSystem);
+            moldSystem,
+            dfam);
+    }
+
+    private static GeneratorDfamConfig LoadDfamConfig(JsonDocument document)
+    {
+        if (!document.RootElement.TryGetProperty("dfam", out var dfam))
+        {
+            throw new InvalidOperationException("dfam is required for DfAM report generation.");
+        }
+
+        return new GeneratorDfamConfig(
+            MinimumWallThicknessMm: ReadRequiredDecimal(dfam, "minimumWallThicknessMm"),
+            RecommendedMinimumWallThicknessMm: ReadRequiredDecimal(dfam, "recommendedMinimumWallThicknessMm"),
+            UsesPreliminaryGeometry: ReadRequiredBoolean(dfam, "usesPreliminaryGeometry"));
     }
 
     private static GeneratorMoldSystemConfig LoadMoldSystemConfig(JsonDocument document)
@@ -277,6 +300,21 @@ public sealed class GeneratorPipelineInputValidator
         }
 
         return result;
+    }
+
+    private static bool ReadRequiredBoolean(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            throw new InvalidOperationException($"{propertyName} is required.");
+        }
+
+        if (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False)
+        {
+            throw new InvalidOperationException($"{propertyName} must be a boolean.");
+        }
+
+        return value.GetBoolean();
     }
 
     private static string ReadRequiredString(JsonElement element, string propertyName)

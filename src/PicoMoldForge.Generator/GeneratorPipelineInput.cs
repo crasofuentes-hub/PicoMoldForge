@@ -12,4 +12,5 @@ public sealed record GeneratorPipelineInput(
     GeneratorPartingOverride? PartingOverride,
     GeneratorCoolingConfig Cooling,
     GeneratorLatticeConfig Lattice,
-    GeneratorMoldSystemConfig MoldSystem);
+    GeneratorMoldSystemConfig MoldSystem,
+    GeneratorDfamConfig DfAM);

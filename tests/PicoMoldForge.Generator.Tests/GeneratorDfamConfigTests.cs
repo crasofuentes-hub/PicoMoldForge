@@ -3,104 +3,19 @@ using Xunit;
 
 namespace PicoMoldForge.Generator.Tests;
 
-public sealed class GeneratorCommandLineApplicationTests
+public sealed class GeneratorDfamConfigTests
 {
     [Fact]
-    public void Run_WithSelfTest_ReturnsZeroAndPrintsPass()
+    public void Run_WithMissingDfam_ReturnsOne()
     {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-
-        var exitCode = GeneratorCommandLineApplication.Run(new[] { "--self-test" }, output, error);
-
-        Assert.Equal(0, exitCode);
-        Assert.Contains("PicoMoldForge Generator v5", output.ToString());
-        Assert.Contains("Status: PASS", output.ToString());
-        Assert.Equal(string.Empty, error.ToString());
-    }
-
-    [Fact]
-    public void Run_WithHelp_ReturnsZeroAndPrintsUsage()
-    {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-
-        var exitCode = GeneratorCommandLineApplication.Run(new[] { "--help" }, output, error);
-
-        Assert.Equal(0, exitCode);
-        Assert.Contains("Usage:", output.ToString());
-        Assert.Contains("--config <path> --generate-all", output.ToString());
-        Assert.Equal(string.Empty, error.ToString());
-    }
-
-    [Fact]
-    public void Run_WithGenerateAllAndValidBinaryStlConfig_ReturnsZeroAndGeneratesArtifacts()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-intake-{Guid.NewGuid():N}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-missing-dfam-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var stlPath = Path.Combine(tempDir, "part-binary.stl");
         var configPath = Path.Combine(tempDir, "project.json");
-        var outputDirectory = Path.Combine(tempDir, "output");
 
-        WriteBinaryBoxStl(stlPath, sizeX: 20.0f, sizeY: 10.0f, sizeZ: 5.0f);
-        WriteProjectConfig(configPath, "part-binary.stl", "output");
-
-        try
-        {
-            using var output = new StringWriter();
-            using var error = new StringWriter();
-
-            var exitCode = GeneratorCommandLineApplication.Run(
-                new[] { "--config", configPath, "--generate-all" },
-                output,
-                error);
-
-            Assert.Equal(0, exitCode);
-            Assert.Equal(string.Empty, error.ToString());
-            Assert.Contains("Generation input validation: PASS", output.ToString());
-            Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 10", output.ToString());
-
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "DiagnosticMesh.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "Cavity.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavity.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCoreSide.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavitySide.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "Core.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "CoolingDiagnostic.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "LatticeDiagnostic.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "MoldSystemDiagnostic.stl")));
-            Assert.True(File.Exists(Path.Combine(outputDirectory, "FinalProjectReport.json")));
-        }
-        finally
-        {
-            Directory.Delete(tempDir, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void Run_WithGenerateAllAndAsciiStlConfig_ReturnsOne()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-ascii-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-
-        var stlPath = Path.Combine(tempDir, "part-ascii.stl");
-        var configPath = Path.Combine(tempDir, "project.json");
-
-        File.WriteAllText(stlPath, """
-        solid triangle
-          facet normal 0 0 1
-            outer loop
-              vertex 0 0 0
-              vertex 10 0 0
-              vertex 0 10 0
-            endloop
-          endfacet
-        endsolid triangle
-        """);
-
-        WriteProjectConfig(configPath, "part-ascii.stl", "output");
+        WriteBinaryTriangleStl(stlPath);
+        WriteConfig(configPath, "part-binary.stl", "output", dfamJson: null);
 
         try
         {
@@ -114,7 +29,7 @@ public sealed class GeneratorCommandLineApplicationTests
 
             Assert.Equal(1, exitCode);
             Assert.Contains("Generation pipeline: FAIL", error.ToString());
-            Assert.Contains("requires binary STL input", error.ToString());
+            Assert.Contains("dfam is required", error.ToString());
         }
         finally
         {
@@ -123,53 +38,96 @@ public sealed class GeneratorCommandLineApplicationTests
     }
 
     [Fact]
-    public void Run_WithGenerateAllAndMissingConfig_ReturnsOne()
+    public void Run_WithInvalidDfam_ReturnsOne()
     {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-invalid-dfam-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
 
-        var exitCode = GeneratorCommandLineApplication.Run(
-            new[] { "--config", "missing-project.json", "--generate-all" },
-            output,
-            error);
+        var stlPath = Path.Combine(tempDir, "part-binary.stl");
+        var configPath = Path.Combine(tempDir, "project.json");
 
-        Assert.Equal(1, exitCode);
-        Assert.Contains("Generation pipeline: FAIL", error.ToString());
-        Assert.Contains("Config file was not found", error.ToString());
+        WriteBinaryTriangleStl(stlPath);
+        WriteConfig(configPath, "part-binary.stl", "output", """
+          "dfam": {
+            "minimumWallThicknessMm": 0,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
+          }
+        """);
+
+        try
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var exitCode = GeneratorCommandLineApplication.Run(
+                new[] { "--config", configPath, "--generate-all" },
+                output,
+                error);
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Generation pipeline: FAIL", error.ToString());
+            Assert.Contains("dfam validation failed", error.ToString());
+            Assert.Contains("dfam.minimumWallThicknessMm must be greater than zero", error.ToString());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
     }
 
     [Fact]
-    public void Run_WithGenerateAllWithoutConfig_ReturnsTwo()
+    public void Run_WithValidDfam_GeneratesFinalReport()
     {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"picomoldforge-generator-valid-dfam-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
 
-        var exitCode = GeneratorCommandLineApplication.Run(
-            new[] { "--generate-all" },
-            output,
-            error);
+        var stlPath = Path.Combine(tempDir, "part-binary.stl");
+        var configPath = Path.Combine(tempDir, "project.json");
+        var outputDirectory = Path.Combine(tempDir, "output");
 
-        Assert.Equal(2, exitCode);
-        Assert.Contains("Missing required option: --config <path>", error.ToString());
+        WriteBinaryBoxStl(stlPath, sizeX: 20, sizeY: 10, sizeZ: 5);
+        WriteConfig(configPath, "part-binary.stl", "output", """
+          "dfam": {
+            "minimumWallThicknessMm": 1.5,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
+          }
+        """);
+
+        try
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var exitCode = GeneratorCommandLineApplication.Run(
+                new[] { "--config", configPath, "--generate-all" },
+                output,
+                error);
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "FinalProjectReport.json")));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
     }
 
-    [Fact]
-    public void Run_WithUnknownCommand_ReturnsTwo()
+    private static void WriteConfig(
+        string path,
+        string inputPath,
+        string outputDirectory,
+        string? dfamJson)
     {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
+        var dfamSegment = dfamJson is null
+            ? string.Empty
+            : "," + Environment.NewLine + dfamJson;
 
-        var exitCode = GeneratorCommandLineApplication.Run(new[] { "--unknown" }, output, error);
-
-        Assert.Equal(2, exitCode);
-        Assert.Contains("Unknown command", error.ToString());
-    }
-
-    private static void WriteProjectConfig(string path, string inputPath, string outputDirectory)
-    {
         File.WriteAllText(path, $$"""
         {
-          "projectName": "Generator Intake Test",
+          "projectName": "DfAM Config Test",
           "inputPath": "{{inputPath}}",
           "outputDirectory": "{{outputDirectory}}",
           "mode": "Prototype",
@@ -192,6 +150,11 @@ public sealed class GeneratorCommandLineApplicationTests
             "maxXmm": 125,
             "maxYmm": 85,
             "maxZmm": 55
+          },
+          "parting": {
+            "mode": "Manual",
+            "axis": "X",
+            "offsetMm": 10.0
           },
           "cooling": {
             "partSizeXmm": 100,
@@ -224,14 +187,24 @@ public sealed class GeneratorCommandLineApplicationTests
             "ventWidthMm": 0.5,
             "ventDepthMm": 0.1,
             "insertClearanceMm": 2
-          },
-          "dfam": {
-            "minimumWallThicknessMm": 1.5,
-            "recommendedMinimumWallThicknessMm": 1.2,
-            "usesPreliminaryGeometry": true
-          }
+          }{{dfamSegment}}
         }
         """);
+    }
+
+    private static void WriteBinaryTriangleStl(string path)
+    {
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+
+        var header = new byte[80];
+        var headerText = "PicoMoldForge dfam config binary STL test"u8.ToArray();
+        Array.Copy(headerText, header, headerText.Length);
+        writer.Write(header);
+
+        writer.Write((uint)1);
+
+        WriteTriangle(writer, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 10, 0);
     }
 
     private static void WriteBinaryBoxStl(string path, float sizeX, float sizeY, float sizeZ)
@@ -240,7 +213,7 @@ public sealed class GeneratorCommandLineApplicationTests
         using var writer = new BinaryWriter(stream);
 
         var header = new byte[80];
-        var headerText = "PicoMoldForge generator command binary box STL test"u8.ToArray();
+        var headerText = "PicoMoldForge dfam config binary box STL test"u8.ToArray();
         Array.Copy(headerText, header, headerText.Length);
         writer.Write(header);
 

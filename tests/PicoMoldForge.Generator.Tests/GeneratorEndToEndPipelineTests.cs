@@ -115,6 +115,11 @@ public sealed class GeneratorEndToEndPipelineTests
             "ventWidthMm": 0.5,
             "ventDepthMm": 0.1,
             "insertClearanceMm": 2
+          },
+          "dfam": {
+            "minimumWallThicknessMm": 1.5,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
           }
         }
         """);

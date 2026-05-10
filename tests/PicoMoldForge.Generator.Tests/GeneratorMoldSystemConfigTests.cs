@@ -58,6 +58,11 @@ public sealed class GeneratorMoldSystemConfigTests
             "ventWidthMm": 0.5,
             "ventDepthMm": 0.1,
             "insertClearanceMm": 2
+          },
+          "dfam": {
+            "minimumWallThicknessMm": 1.5,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
           }
         """);
 
@@ -104,6 +109,11 @@ public sealed class GeneratorMoldSystemConfigTests
             "ventWidthMm": 0.4,
             "ventDepthMm": 0.08,
             "insertClearanceMm": 1.5
+          },
+          "dfam": {
+            "minimumWallThicknessMm": 1.5,
+            "recommendedMinimumWallThicknessMm": 1.2,
+            "usesPreliminaryGeometry": true
           }
         """);
 
