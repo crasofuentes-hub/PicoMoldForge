@@ -237,3 +237,48 @@ The current split flow is:
     -> BooleanCavitySide.stl
 
 Manual parting does not yet implement shutoff surfaces, side actions, slides, lifters, gate design, runner design, sprue design, or manufacturing certification.
+
+## cooling configuration
+
+The project JSON must include a cooling section.
+
+Example:
+
+    "cooling": {
+      "partSizeXmm": 100,
+      "partSizeYmm": 60,
+      "partSizeZmm": 30,
+      "channelDiameterMm": 6,
+      "channelSpacingMm": 15,
+      "minimumClearanceMm": 10,
+      "channelCount": 3
+    }
+
+Validation rules:
+
+- cooling.partSizeXmm must be greater than zero;
+- cooling.partSizeYmm must be greater than zero;
+- cooling.partSizeZmm must be greater than zero;
+- cooling.channelDiameterMm must be greater than zero;
+- cooling.channelSpacingMm must be greater than zero;
+- cooling.minimumClearanceMm cannot be negative;
+- cooling.channelCount must be greater than zero.
+
+Current cooling pipeline:
+
+    cooling config
+    -> CoolingPlanner
+    -> PicoCoolingDiagnosticExporter
+    -> CoolingDiagnostic.stl
+
+Current limitation:
+
+CoolingDiagnostic.stl is a preliminary diagnostic artifact. It visualizes cooling channel geometry but does not yet subtract channels from BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Recommended next cooling development:
+
+    cooling config
+    -> cooling channel voxels
+    -> subtract channels from mold halves
+    -> validate clearance
+    -> emit updated BooleanCoreSide.stl / BooleanCavitySide.stl or separate cooled mold-half artifacts

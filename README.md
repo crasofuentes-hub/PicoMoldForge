@@ -208,3 +208,37 @@ The parting configuration currently controls the split used to generate:
 - BooleanCavitySide.stl
 
 Manual parting is recommended when the automatic heuristic does not match the intended mold-opening strategy.
+
+## Cooling configuration
+
+The generator requires a cooling section for CoolingDiagnostic.stl generation.
+
+Example:
+
+    "cooling": {
+      "partSizeXmm": 100,
+      "partSizeYmm": 60,
+      "partSizeZmm": 30,
+      "channelDiameterMm": 6,
+      "channelSpacingMm": 15,
+      "minimumClearanceMm": 10,
+      "channelCount": 3
+    }
+
+Current cooling fields:
+
+- partSizeXmm: reference part size in X.
+- partSizeYmm: reference part size in Y.
+- partSizeZmm: reference part size in Z.
+- channelDiameterMm: preliminary cooling channel diameter.
+- channelSpacingMm: preliminary spacing between cooling channels.
+- minimumClearanceMm: minimum configured clearance reference.
+- channelCount: number of preliminary straight cooling channels.
+
+The current output is:
+
+- CoolingDiagnostic.stl
+
+CoolingDiagnostic.stl is still a diagnostic visualization. It does not yet subtract cooling channels from BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Future cooling work should move from diagnostic channel geometry to actual cooling-channel subtraction and clearance checks against cavity/core, ejectors, inserts, and part geometry.
