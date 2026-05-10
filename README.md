@@ -242,3 +242,39 @@ The current output is:
 CoolingDiagnostic.stl is still a diagnostic visualization. It does not yet subtract cooling channels from BooleanCoreSide.stl or BooleanCavitySide.stl.
 
 Future cooling work should move from diagnostic channel geometry to actual cooling-channel subtraction and clearance checks against cavity/core, ejectors, inserts, and part geometry.
+
+## Lattice configuration
+
+The generator requires a lattice section for LatticeDiagnostic.stl generation.
+
+Example:
+
+    "lattice": {
+      "regionName": "default-lattice-region",
+      "minXmm": 0,
+      "minYmm": 0,
+      "minZmm": 0,
+      "maxXmm": 20,
+      "maxYmm": 10,
+      "maxZmm": 10,
+      "cellSizeMm": 10,
+      "beamRadiusMm": 1,
+      "targetRelativeDensity": 0.2
+    }
+
+Current lattice fields:
+
+- regionName: logical name for the lattice region.
+- minXmm, minYmm, minZmm: minimum lattice region bounds.
+- maxXmm, maxYmm, maxZmm: maximum lattice region bounds.
+- cellSizeMm: preliminary lattice cell size.
+- beamRadiusMm: preliminary beam radius.
+- targetRelativeDensity: target density reference from greater than 0 to 1.
+
+The current output is:
+
+- LatticeDiagnostic.stl
+
+LatticeDiagnostic.stl is still a diagnostic visualization. It does not yet subtract or integrate lattice structures into BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Future lattice work should move from diagnostic geometry to real mold-half integration, clearance validation, and manufacturability checks.

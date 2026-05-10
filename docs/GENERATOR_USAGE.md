@@ -282,3 +282,51 @@ Recommended next cooling development:
     -> subtract channels from mold halves
     -> validate clearance
     -> emit updated BooleanCoreSide.stl / BooleanCavitySide.stl or separate cooled mold-half artifacts
+
+## lattice configuration
+
+The project JSON must include a lattice section.
+
+Example:
+
+    "lattice": {
+      "regionName": "default-lattice-region",
+      "minXmm": 0,
+      "minYmm": 0,
+      "minZmm": 0,
+      "maxXmm": 20,
+      "maxYmm": 10,
+      "maxZmm": 10,
+      "cellSizeMm": 10,
+      "beamRadiusMm": 1,
+      "targetRelativeDensity": 0.2
+    }
+
+Validation rules:
+
+- lattice.regionName is required;
+- lattice X size must be greater than zero;
+- lattice Y size must be greater than zero;
+- lattice Z size must be greater than zero;
+- lattice.cellSizeMm must be greater than zero;
+- lattice.beamRadiusMm must be greater than zero;
+- lattice.targetRelativeDensity must be greater than zero and less than or equal to one.
+
+Current lattice pipeline:
+
+    lattice config
+    -> LatticePlanner
+    -> PicoLatticeDiagnosticExporter
+    -> LatticeDiagnostic.stl
+
+Current limitation:
+
+LatticeDiagnostic.stl is a preliminary diagnostic artifact. It visualizes lattice geometry but does not yet integrate lattice structures into BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Recommended next lattice development:
+
+    lattice config
+    -> lattice voxels
+    -> integrate or subtract lattice from mold halves
+    -> validate clearance and manufacturability
+    -> emit updated functional mold-half artifacts
