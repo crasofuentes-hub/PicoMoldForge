@@ -49,6 +49,7 @@ Expected artifacts:
 
 - DiagnosticMesh.stl
 - Cavity.stl
+- BooleanCavity.stl
 - Core.stl
 - CoolingDiagnostic.stl
 - LatticeDiagnostic.stl
@@ -69,6 +70,26 @@ Important: ASCII STL is not supported by the current PicoGK generator path. Use 
 ## Current pipeline
 
 config JSON -> binary STL validation -> PicoGK mesh analysis -> PicoGK voxel analysis -> DiagnosticMesh.stl -> preliminary Cavity.stl -> preliminary Core.stl -> CoolingDiagnostic.stl -> LatticeDiagnostic.stl -> MoldSystemDiagnostic.stl -> DfAM preliminary report -> FinalProjectReport.json
+
+
+## Boolean cavity output
+
+The generator now emits:
+
+    BooleanCavity.stl
+
+This file is produced by PicoGK voxel boolean subtraction:
+
+    mold block voxels - part voxels
+
+This is more functional than the legacy preliminary Cavity.stl artifact, but it is still preliminary and not production-certified.
+
+During the current transition period, the generator emits both:
+
+    Cavity.stl
+    BooleanCavity.stl
+
+Cavity.stl is kept for compatibility. BooleanCavity.stl is the newer functional-preliminary cavity artifact.
 
 ## Important limitations
 
