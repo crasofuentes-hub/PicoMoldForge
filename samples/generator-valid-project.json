@@ -14,5 +14,13 @@
     "buildVolumeXmm": 250,
     "buildVolumeYmm": 250,
     "buildVolumeZmm": 300
+  },
+  "moldBlock": {
+    "minXmm": -25,
+    "minYmm": -25,
+    "minZmm": -25,
+    "maxXmm": 125,
+    "maxYmm": 85,
+    "maxZmm": 55
   }
 }
