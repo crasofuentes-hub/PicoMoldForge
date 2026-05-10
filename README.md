@@ -50,6 +50,39 @@ Example:
 
 BooleanCavity.stl is a functional preliminary boolean cavity proof. It is still not production-certified mold tooling.
 
+
+## Boolean split mold halves
+
+PicoMoldForge now generates two additional functional-preliminary mold half artifacts:
+
+- BooleanCoreSide.stl
+- BooleanCavitySide.stl
+
+These files are generated from the configured moldBlock and the detected parting plane.
+
+The current split flow is:
+
+    input binary STL
+    + moldBlock
+    + parting axis
+    + parting plane offset
+    -> split mold block halves
+    -> voxel boolean subtraction
+    -> BooleanCoreSide.stl
+    -> BooleanCavitySide.stl
+
+Current artifact meaning:
+
+- Cavity.stl: legacy preliminary cavity diagnostic artifact.
+- Core.stl: legacy preliminary core diagnostic artifact.
+- BooleanCavity.stl: full mold block minus part voxels.
+- BooleanCoreSide.stl: split core-side mold half after part subtraction.
+- BooleanCavitySide.stl: split cavity-side mold half after part subtraction.
+
+BooleanCoreSide.stl and BooleanCavitySide.stl are more functional than the legacy Cavity.stl and Core.stl artifacts, but they are still preliminary.
+
+They do not yet include shutoff surfaces, gates, runners, sprues, cooling-channel subtraction, ejector-hole subtraction, side actions, slides, lifters, or manufacturing certification.
+
 ## Important limitation
 
 The current STL outputs are preliminary diagnostic engineering artifacts.
