@@ -141,6 +141,17 @@ public sealed class GeneratorMoldBlockConfigTests
             "cellSizeMm": 10,
             "beamRadiusMm": 1,
             "targetRelativeDensity": 0.2
+          },
+          "moldSystem": {
+            "partSizeXmm": 100,
+            "partSizeYmm": 60,
+            "partSizeZmm": 30,
+            "moldMarginMm": 20,
+            "ejectorPinDiameterMm": 4,
+            "ejectorPinCount": 4,
+            "ventWidthMm": 0.5,
+            "ventDepthMm": 0.1,
+            "insertClearanceMm": 2
           }
         }
         """);

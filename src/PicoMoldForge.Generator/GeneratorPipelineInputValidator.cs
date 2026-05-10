@@ -62,6 +62,15 @@ public sealed class GeneratorPipelineInputValidator
                 "lattice validation failed: " + string.Join(" ", latticeErrors));
         }
 
+        var moldSystem = LoadMoldSystemConfig(document);
+        var moldSystemErrors = moldSystem.Validate();
+
+        if (moldSystemErrors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "moldSystem validation failed: " + string.Join(" ", moldSystemErrors));
+        }
+
         var configDirectory = Path.GetDirectoryName(resolvedConfigPath) ?? Directory.GetCurrentDirectory();
 
         var resolvedInputPath = Path.IsPathRooted(config.InputPath)
@@ -99,7 +108,27 @@ public sealed class GeneratorPipelineInputValidator
             moldBlockBounds,
             partingOverride,
             cooling,
-            lattice);
+            lattice,
+            moldSystem);
+    }
+
+    private static GeneratorMoldSystemConfig LoadMoldSystemConfig(JsonDocument document)
+    {
+        if (!document.RootElement.TryGetProperty("moldSystem", out var moldSystem))
+        {
+            throw new InvalidOperationException("moldSystem is required for MoldSystemDiagnostic.stl generation.");
+        }
+
+        return new GeneratorMoldSystemConfig(
+            PartSizeXmm: ReadRequiredDecimal(moldSystem, "partSizeXmm"),
+            PartSizeYmm: ReadRequiredDecimal(moldSystem, "partSizeYmm"),
+            PartSizeZmm: ReadRequiredDecimal(moldSystem, "partSizeZmm"),
+            MoldMarginMm: ReadRequiredDecimal(moldSystem, "moldMarginMm"),
+            EjectorPinDiameterMm: ReadRequiredDecimal(moldSystem, "ejectorPinDiameterMm"),
+            EjectorPinCount: ReadRequiredInt32(moldSystem, "ejectorPinCount"),
+            VentWidthMm: ReadRequiredDecimal(moldSystem, "ventWidthMm"),
+            VentDepthMm: ReadRequiredDecimal(moldSystem, "ventDepthMm"),
+            InsertClearanceMm: ReadRequiredDecimal(moldSystem, "insertClearanceMm"));
     }
 
     private static GeneratorLatticeConfig LoadLatticeConfig(JsonDocument document)
