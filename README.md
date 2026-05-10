@@ -278,3 +278,41 @@ The current output is:
 LatticeDiagnostic.stl is still a diagnostic visualization. It does not yet subtract or integrate lattice structures into BooleanCoreSide.stl or BooleanCavitySide.stl.
 
 Future lattice work should move from diagnostic geometry to real mold-half integration, clearance validation, and manufacturability checks.
+
+## Mold system configuration
+
+The generator requires a moldSystem section for MoldSystemDiagnostic.stl generation.
+
+Example:
+
+    "moldSystem": {
+      "partSizeXmm": 100,
+      "partSizeYmm": 60,
+      "partSizeZmm": 30,
+      "moldMarginMm": 20,
+      "ejectorPinDiameterMm": 4,
+      "ejectorPinCount": 4,
+      "ventWidthMm": 0.5,
+      "ventDepthMm": 0.1,
+      "insertClearanceMm": 2
+    }
+
+Current moldSystem fields:
+
+- partSizeXmm: reference part size in X.
+- partSizeYmm: reference part size in Y.
+- partSizeZmm: reference part size in Z.
+- moldMarginMm: preliminary mold margin around the part.
+- ejectorPinDiameterMm: preliminary ejector pin diameter.
+- ejectorPinCount: preliminary ejector pin count.
+- ventWidthMm: preliminary vent width.
+- ventDepthMm: preliminary vent depth.
+- insertClearanceMm: preliminary insert clearance.
+
+The current output is:
+
+- MoldSystemDiagnostic.stl
+
+MoldSystemDiagnostic.stl is still a diagnostic visualization. It does not yet subtract ejector holes, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Future mold-system work should move from diagnostic geometry to real mold-half subtraction, placement strategy, clearance validation, and manufacturability checks.

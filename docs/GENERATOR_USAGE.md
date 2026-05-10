@@ -330,3 +330,52 @@ Recommended next lattice development:
     -> integrate or subtract lattice from mold halves
     -> validate clearance and manufacturability
     -> emit updated functional mold-half artifacts
+
+## moldSystem configuration
+
+The project JSON must include a moldSystem section.
+
+Example:
+
+    "moldSystem": {
+      "partSizeXmm": 100,
+      "partSizeYmm": 60,
+      "partSizeZmm": 30,
+      "moldMarginMm": 20,
+      "ejectorPinDiameterMm": 4,
+      "ejectorPinCount": 4,
+      "ventWidthMm": 0.5,
+      "ventDepthMm": 0.1,
+      "insertClearanceMm": 2
+    }
+
+Validation rules:
+
+- moldSystem.partSizeXmm must be greater than zero;
+- moldSystem.partSizeYmm must be greater than zero;
+- moldSystem.partSizeZmm must be greater than zero;
+- moldSystem.moldMarginMm cannot be negative;
+- moldSystem.ejectorPinDiameterMm must be greater than zero;
+- moldSystem.ejectorPinCount must be greater than zero;
+- moldSystem.ventWidthMm must be greater than zero;
+- moldSystem.ventDepthMm must be greater than zero;
+- moldSystem.insertClearanceMm cannot be negative.
+
+Current mold-system pipeline:
+
+    moldSystem config
+    -> PreliminaryMoldSystemPlanner
+    -> PicoMoldSystemDiagnosticExporter
+    -> MoldSystemDiagnostic.stl
+
+Current limitation:
+
+MoldSystemDiagnostic.stl is a preliminary diagnostic artifact. It visualizes mold-system reference geometry but does not yet subtract ejectors, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl.
+
+Recommended next mold-system development:
+
+    moldSystem config
+    -> ejector/vent/insert geometry
+    -> collision and clearance validation
+    -> subtract functional features from mold halves
+    -> emit updated functional mold-half artifacts
