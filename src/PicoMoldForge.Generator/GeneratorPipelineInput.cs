@@ -9,4 +9,5 @@ public sealed record GeneratorPipelineInput(
     string ResolvedInputPath,
     string ResolvedOutputDirectory,
     MoldBlockBounds BooleanMoldBlockBounds,
-    GeneratorPartingOverride? PartingOverride);
+    GeneratorPartingOverride? PartingOverride,
+    GeneratorCoolingConfig Cooling);

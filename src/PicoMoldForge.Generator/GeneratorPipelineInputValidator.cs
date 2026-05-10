@@ -44,6 +44,15 @@ public sealed class GeneratorPipelineInputValidator
 
         var partingOverride = LoadPartingOverride(document, moldBlockBounds);
 
+        var cooling = LoadCoolingConfig(document);
+        var coolingErrors = cooling.Validate();
+
+        if (coolingErrors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "cooling validation failed: " + string.Join(" ", coolingErrors));
+        }
+
         var configDirectory = Path.GetDirectoryName(resolvedConfigPath) ?? Directory.GetCurrentDirectory();
 
         var resolvedInputPath = Path.IsPathRooted(config.InputPath)
@@ -79,7 +88,25 @@ public sealed class GeneratorPipelineInputValidator
             resolvedInputPath,
             resolvedOutputDirectory,
             moldBlockBounds,
-            partingOverride);
+            partingOverride,
+            cooling);
+    }
+
+    private static GeneratorCoolingConfig LoadCoolingConfig(JsonDocument document)
+    {
+        if (!document.RootElement.TryGetProperty("cooling", out var cooling))
+        {
+            throw new InvalidOperationException("cooling is required for CoolingDiagnostic.stl generation.");
+        }
+
+        return new GeneratorCoolingConfig(
+            PartSizeXmm: ReadRequiredDecimal(cooling, "partSizeXmm"),
+            PartSizeYmm: ReadRequiredDecimal(cooling, "partSizeYmm"),
+            PartSizeZmm: ReadRequiredDecimal(cooling, "partSizeZmm"),
+            ChannelDiameterMm: ReadRequiredDecimal(cooling, "channelDiameterMm"),
+            ChannelSpacingMm: ReadRequiredDecimal(cooling, "channelSpacingMm"),
+            MinimumClearanceMm: ReadRequiredDecimal(cooling, "minimumClearanceMm"),
+            ChannelCount: ReadRequiredInt32(cooling, "channelCount"));
     }
 
     private static MoldBlockBounds LoadMoldBlockBounds(JsonDocument document)
@@ -171,6 +198,26 @@ public sealed class GeneratorPipelineInputValidator
         }
 
         return value.GetDecimal();
+    }
+
+    private static int ReadRequiredInt32(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            throw new InvalidOperationException($"{propertyName} is required.");
+        }
+
+        if (value.ValueKind != JsonValueKind.Number)
+        {
+            throw new InvalidOperationException($"{propertyName} must be a number.");
+        }
+
+        if (!value.TryGetInt32(out var result))
+        {
+            throw new InvalidOperationException($"{propertyName} must be a valid integer.");
+        }
+
+        return result;
     }
 
     private static string ReadRequiredString(JsonElement element, string propertyName)

@@ -83,6 +83,15 @@ public sealed class GeneratorEndToEndPipelineTests
             "maxXmm": 125,
             "maxYmm": 85,
             "maxZmm": 55
+          },
+          "cooling": {
+            "partSizeXmm": 100,
+            "partSizeYmm": 60,
+            "partSizeZmm": 30,
+            "channelDiameterMm": 6,
+            "channelSpacingMm": 15,
+            "minimumClearanceMm": 10,
+            "channelCount": 3
           }
         }
         """);
