@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace PicoMoldForge.Generator;
@@ -61,6 +62,15 @@ public sealed class GeneratorRunManifestWriter
         return new GeneratorRunManifestArtifact(
             FileName: fileInfo.Name,
             Path: resolvedPath,
-            SizeBytes: fileInfo.Length);
+            SizeBytes: fileInfo.Length,
+            Sha256: ComputeSha256(resolvedPath));
+    }
+
+    private static string ComputeSha256(string path)
+    {
+        using var stream = File.OpenRead(path);
+        var hashBytes = SHA256.HashData(stream);
+
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 }

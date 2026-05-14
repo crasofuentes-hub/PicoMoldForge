@@ -152,9 +152,24 @@ foreach ($artifact in $runManifest.Artifacts) {
   if ($artifact.SizeBytes -le 0) {
     throw "RunManifest artifact has invalid SizeBytes: $($artifact.FileName)"
   }
+
+  if ([string]::IsNullOrWhiteSpace($artifact.Sha256)) {
+    throw "RunManifest artifact is missing Sha256: $($artifact.FileName)"
+  }
+
+  if ($artifact.Sha256 -notmatch "^[a-f0-9]{64}$") {
+    throw "RunManifest artifact has invalid Sha256 format: $($artifact.FileName)"
+  }
+
+  $computedHash = (Get-FileHash -Path $artifact.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+
+  if ($computedHash -ne $artifact.Sha256) {
+    throw "RunManifest artifact Sha256 mismatch: $($artifact.FileName)"
+  }
 }
 
 Write-Host "RunManifest artifacts: $($runManifest.Artifacts.Count)" -ForegroundColor Green
 Write-Host "RunManifest output: $($runManifest.OutputDirectory)" -ForegroundColor Green
+Write-Host "RunManifest SHA256 checks: PASS" -ForegroundColor Green
 
 Write-Host "`n== GENERATOR PUBLISH VERIFY PASS ==" -ForegroundColor Green
