@@ -555,3 +555,39 @@ Expected output includes:
     RunManifest.json
 
 RunManifest.json is intended for automation, regression checks, release verification, reproducibility, and audit workflows.
+
+## run manifest integrity
+
+RunManifest.json records every generated artifact with file size and SHA-256 integrity metadata.
+
+Current artifact fields:
+
+    FileName
+    Path
+    SizeBytes
+    Sha256
+
+Sha256 is computed from the generated artifact file after generation completes.
+
+A valid Sha256 value must be:
+
+    lowercase
+    hexadecimal
+    64 characters
+
+Purpose:
+
+    generated artifact -> file size + sha256 -> reproducible integrity check
+
+This allows downstream automation to detect stale, modified, corrupted, or partially copied artifacts.
+
+The publish verification script recomputes each artifact SHA-256 and compares it with the value stored in RunManifest.json.
+
+Command:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
+
+Expected verification message:
+
+    RunManifest SHA256 checks: PASS
+

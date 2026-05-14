@@ -453,3 +453,34 @@ The current schema version is:
     picomoldforge.run-manifest.v1
 
 RunManifest.json helps verify what the generator produced, where it wrote the output package, which command-line behavior was used, and whether stale output was cleaned before generation.
+
+## Run manifest integrity
+
+Every successful generator run writes:
+
+    RunManifest.json
+
+Each generated artifact entry includes:
+
+- FileName
+- Path
+- SizeBytes
+- Sha256
+
+The Sha256 field is a lowercase SHA-256 checksum of the generated artifact file.
+
+This allows users and automation to verify that generated STL/JSON artifacts have not changed after the run.
+
+Example artifact entry:
+
+    {
+      "FileName": "BooleanCavitySide.stl",
+      "Path": "C:\\path\\to\\BooleanCavitySide.stl",
+      "SizeBytes": 123456,
+      "Sha256": "64-character lowercase sha256 hash"
+    }
+
+The publish verification script validates artifact existence, file size, and SHA-256 hash consistency:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
+
