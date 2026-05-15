@@ -20,7 +20,7 @@ PicoMoldForge is currently a mature prototype with:
 
 Current baseline:
 
-- 149+ tests passing before Engineering issue docs
+- 165 tests passing after DraftRuleEngine v1
 - generator publish verification passing
 - schema verification passing
 - CLI supports --generate-all, --clean-output, --output, --self-test, and --help
@@ -142,29 +142,6 @@ Each issue can carry:
 
 ## Next Implementation Target
 
-### Phase 26A - DraftRuleEngine v1
-
-Implement codified expert draft rules.
-
-The initial DraftRuleEngine should evaluate:
-
-- material
-- surface type
-- feature type
-- actual draft angle
-- texture depth
-- feature depth
-- cosmetic criticality
-- override flags
-
-It should output:
-
-- EngineeringRuleResult
-- EngineeringIssue records
-- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
-
-## Upcoming Engineering Rule Packs
-
 ### Phase 26B - Document DraftRuleEngine v1
 
 Document the first implemented rule engine.
@@ -205,3 +182,32 @@ Implement preliminary rule evaluation from expert tables.
 PicoMoldForge is production-grade when it can safely accept real user configurations, validate geometry and project assumptions, generate repeatable output packages, report risks clearly, preserve run evidence, avoid destructive CLI behavior, and support expert engineering review.
 
 It is not production-grade merely because it generates STL files.
+
+### Phase 26A - DraftRuleEngine v1 - DONE
+
+PicoMoldForge now implements the first codified engineering rule engine.
+
+DraftRuleEngine v1 evaluates:
+
+- material
+- surface type
+- feature type
+- actual draft angle
+- texture depth
+- feature depth
+- cosmetic criticality
+- engineer override flags
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+The implementation is based on the expert injection mold rule pack documented in:
+
+- docs/EXPERT_INJECTION_MOLD_RULES_V1.md
+
+Current verified baseline after this phase:
+
+- 165 tests passing

@@ -9,21 +9,44 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Generator executable: available
 - PicoGK integration: active
 - End-to-end sample: available
-- Verified baseline: 105 tests passing
+- Verified baseline: 165 tests passing
 - License: MIT
+- Repository visibility: public
+- JSON config workflow: available
+- Output override: available
+- Clean output mode: available
+- Output path safety guard: available
+- RunManifest.json: available
+- Artifact SHA256 integrity: available
+- JSON schema contracts: available
+- Expert injection mold rules: captured
+- Engineering issue contracts: available
+- DraftRuleEngine v1: available
 
 ## What it generates
 
-The current generator produces:
+The current generator produces a preliminary output package with:
 
 - DiagnosticMesh.stl
 - Cavity.stl
+- BooleanCavity.stl
 - Core.stl
+- BooleanCoreSide.stl
+- BooleanCavitySide.stl
 - CoolingDiagnostic.stl
 - LatticeDiagnostic.stl
 - MoldSystemDiagnostic.stl
 - FinalProjectReport.json
+- RunManifest.json
 
+RunManifest.json includes artifact integrity metadata:
+
+- FileName
+- Path
+- SizeBytes
+- Sha256
+
+The generated geometry is preliminary. It is intended for engineering review, not direct certified production tooling.
 
 ## Boolean cavity generation
 
@@ -580,3 +603,46 @@ Engineering issues support:
 - CorrectiveAction
 - RequiresEngineerReview
 - SourceRulePackVersion
+
+## Production-grade progress
+
+PicoMoldForge has moved beyond a basic geometry prototype into a production-grade hardening track.
+
+Completed hardening areas:
+
+- publishable Windows CLI generator
+- JSON-driven project configuration
+- output override with `--output <path>`
+- clean output mode with `--clean-output`
+- output path safety guard
+- RunManifest.json for auditable runs
+- SHA256 checksums for generated artifacts
+- JSON schema contracts
+- expert injection mold engineering rules
+- engineering issue contracts
+- DraftRuleEngine v1
+
+Engineering rule foundation:
+
+- EngineeringSeverity
+- EngineeringIssue
+- EngineeringRuleResult
+- EngineeringIssueFactory
+- DraftRuleEngine
+
+Current rule-engine status:
+
+- Draft rules: implemented as DraftRuleEngine v1
+- Shrinkage rules: documented, not implemented yet
+- Gate rules: documented, not implemented yet
+- Cooling rules: documented, not implemented yet
+- Ejector rules: documented, not implemented yet
+- Venting rules: documented, not implemented yet
+- Steel-safe rules: documented, not implemented yet
+- Wall/features rules: documented, not implemented yet
+- Mold-base rules: documented, not implemented yet
+
+Important limitation:
+
+PicoMoldForge does not yet produce certified production-ready injection molds automatically. Generated geometry and engineering issues require review by qualified mold engineers.
+
