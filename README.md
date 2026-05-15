@@ -544,3 +544,40 @@ The generator prints:
 
 when the resolved output path passes safety checks.
 
+## Engineering issue contracts
+
+PicoMoldForge includes engineering issue contracts for converting expert mold-design rules into machine-readable validation results.
+
+Current contracts:
+
+- `EngineeringSeverity`
+- `EngineeringIssue`
+- `EngineeringRuleResult`
+- `EngineeringIssueFactory`
+
+Location:
+
+    src/PicoMoldForge.Core/Engineering/
+
+Documentation:
+
+    docs/ENGINEERING_ISSUES.md
+
+These contracts support future rule engines for draft, shrinkage, cooling, ejectors, venting, steel-safe allowance, wall/features, gates, and mold-base checks.
+
+Engineering issues support:
+
+- `RuleId`
+- `Severity`
+- `Category`
+- `Message`
+- `FeatureType`
+- `Material`
+- `ActualValue`
+- `RequiredValue`
+- `RecommendedValue`
+- `Unit`
+- `CorrectiveAction`
+- `RequiresEngineerReview`
+- `SourceRulePackVersion`
+
