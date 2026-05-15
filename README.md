@@ -550,10 +550,10 @@ PicoMoldForge includes engineering issue contracts for converting expert mold-de
 
 Current contracts:
 
-- `EngineeringSeverity`
-- `EngineeringIssue`
-- `EngineeringRuleResult`
-- `EngineeringIssueFactory`
+- EngineeringSeverity
+- EngineeringIssue
+- EngineeringRuleResult
+- EngineeringIssueFactory
 
 Location:
 
@@ -567,17 +567,16 @@ These contracts support future rule engines for draft, shrinkage, cooling, eject
 
 Engineering issues support:
 
-- `RuleId`
-- `Severity`
-- `Category`
-- `Message`
-- `FeatureType`
-- `Material`
-- `ActualValue`
-- `RequiredValue`
-- `RecommendedValue`
-- `Unit`
-- `CorrectiveAction`
-- `RequiresEngineerReview`
-- `SourceRulePackVersion`
-
+- RuleId
+- Severity
+- Category
+- Message
+- FeatureType
+- Material
+- ActualValue
+- RequiredValue
+- RecommendedValue
+- Unit
+- CorrectiveAction
+- RequiresEngineerReview
+- SourceRulePackVersion

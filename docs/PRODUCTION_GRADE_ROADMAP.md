@@ -8,15 +8,21 @@ PicoMoldForge is currently a mature prototype with:
 - JSON configuration
 - output override
 - clean-output mode
-- generated STL/JSON artifacts
+- output path safety guard
+- generated STL and JSON artifacts
 - FinalProjectReport.json
 - RunManifest.json
+- artifact SHA256 checksums
+- JSON schema contracts
+- expert injection mold rule documentation
+- engineering issue contracts
 - verified baseline
 
 Current baseline:
 
-- 139 tests passing
+- 149+ tests passing before Engineering issue docs
 - generator publish verification passing
+- schema verification passing
 - CLI supports --generate-all, --clean-output, --output, --self-test, and --help
 
 ## Production-Grade Goal
@@ -33,148 +39,49 @@ Production-grade means:
 - repeatable output packages
 - explicit engineering warnings
 - codified expert rules
-- PASS/WARNING/FAIL issues
+- PASS, INFO, WARNING, FAIL, and NEEDS_ENGINEER_REVIEW issues
 - engineer-review workflow
 - documented limitations
 - release-ready packaging
 
-## Immediate Roadmap
+## Completed Product Hardening Phases
 
-### Phase 22A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Preserve expert engineering rules
+### Phase 22A - Preserve expert engineering rules - DONE
 
-Create repository documentation for:
+PicoMoldForge captures expert-provided injection mold rules in:
 
-- expert-provided injection mold rules
-- production-grade roadmap
-- implementation sequence
+- docs/EXPERT_INJECTION_MOLD_RULES_V1.md
 
-### Phase 22B ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â SHA256 checksums in RunManifest.json
+### Phase 22B - SHA256 checksums in RunManifest.json - DONE
 
-Add SHA256 for every generated artifact.
-
-Expected manifest artifact fields:
+RunManifest.json artifact entries include:
 
 - FileName
 - Path
 - SizeBytes
 - Sha256
 
-### Phase 23A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â JSON schemas
+### Phase 22C - Document RunManifest SHA256 integrity - DONE
 
-Add schemas for:
+RunManifest SHA256 integrity is documented in README and generator usage docs.
 
-- PicoMoldForge project config
-- FinalProjectReport.json
-- RunManifest.json
+### Phase 23A - JSON schemas - DONE
 
-Schemas must include versioning.
-
-### Phase 24A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â CLI and path safety
-
-Harden:
-
-- --clean-output
-- --output
-- invalid paths
-- destructive root paths
-- missing permissions
-- exit codes
-
-### Phase 25A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Engineering rule engine foundation
-
-Create generic issue/reporting contracts:
-
-- EngineeringIssue
-- EngineeringSeverity
-- EngineeringRuleResult
-- RulePackVersion
-- CorrectiveAction
-- RequiresEngineerReview
-
-### Phase 25B ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â DraftRuleEngine v1
-
-Implement codified expert draft rules.
-
-### Phase 26A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ShrinkageRuleEngine v1
-
-Implement shrinkage compensation checks.
-
-### Phase 27A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â WallFeatureRuleEngine v1
-
-Implement wall, rib, boss, radius, and abrupt-thickness checks.
-
-### Phase 28A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â CoolingRuleEngine v1
-
-Implement cooling distance and thickness-ratio checks.
-
-### Phase 29A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Gate/Ejector/Venting/SteelSafe rule packs
-
-Implement preliminary rule evaluation from expert tables.
-
-## Mid-Term Engineering Roadmap
-
-- Mesh validation
-- Draft angle analyzer from STL normals
-- Undercut detection
-- Parting strategy report
-- Cooling channel subtraction
-- Ejector placement candidate generation
-- Vent placement candidate generation
-- Gate/runner/sprue preliminary generation
-- Collision/clearance report
-- HTML engineering report
-- Packaged release ZIP
-- GitHub Actions CI
-
-## Production-Grade Definition
-
-PicoMoldForge is production-grade when it can safely accept real user configurations, validate geometry and project assumptions, generate repeatable output packages, report risks clearly, preserve run evidence, avoid destructive CLI behavior, and support expert engineering review.
-
-It is not production-grade merely because it generates STL files.
-### Phase 22C Ã¢â‚¬â€ Document RunManifest SHA256 integrity Ã¢â‚¬â€ DONE
-
-RunManifest.json artifact entries now include:
-
-- FileName
-- Path
-- SizeBytes
-- Sha256
-
-The publish verification script recomputes artifact hashes and fails if any stored checksum does not match the generated file.
-
-### Phase 23B â€” Document JSON schema contracts â€” DONE
-
-PicoMoldForge now documents JSON schema contracts for:
+PicoMoldForge includes schemas for:
 
 - project config
 - FinalProjectReport.json
 - RunManifest.json
 
-The schemas are located in:
+### Phase 23B - Document JSON schema contracts - DONE
 
-- docs/schemas/picomoldforge.project-config.schema.json
-- docs/schemas/picomoldforge.final-project-report.schema.json
-- docs/schemas/picomoldforge.run-manifest.schema.json
-
-The schema documentation is located in:
+Schema contracts are documented in:
 
 - docs/SCHEMAS.md
 
-Verification is handled by:
+### Phase 24A - CLI and path safety - DONE
 
-- scripts/verify-schemas.ps1
-
-RunManifest schema includes artifact SHA-256 integrity metadata.
-
-### Phase 24B — Document output path safety — DONE
-
-PicoMoldForge now documents output path safety for:
-
-- --clean-output
-- --output <path>
-- project JSON outputDirectory
-
-The generator refuses unsafe output targets before generation starts.
+PicoMoldForge refuses unsafe output targets before generation starts.
 
 Rejected output targets include:
 
@@ -186,4 +93,115 @@ Rejected output targets include:
 - system directory
 - existing file paths
 
-The generator prints `Output path safety: PASS` when the resolved output directory passes safety checks.
+### Phase 24B - Document output path safety - DONE
+
+Output path safety is documented in README, generator usage docs, and this roadmap.
+
+### Phase 25A - Engineering rule engine foundation - DONE
+
+PicoMoldForge includes base engineering contracts:
+
+- EngineeringSeverity
+- EngineeringIssue
+- EngineeringRuleResult
+- EngineeringIssueFactory
+
+These are located in:
+
+- src/PicoMoldForge.Core/Engineering/
+
+### Phase 25B - Document engineering issue contracts - DONE
+
+PicoMoldForge documents the engineering issue model used to convert expert mold-design rules into machine-readable validation results.
+
+Documentation:
+
+- docs/ENGINEERING_ISSUES.md
+
+The contracts support:
+
+- PASS
+- INFO
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Each issue can carry:
+
+- RuleId
+- Category
+- FeatureType
+- Material
+- ActualValue
+- RequiredValue
+- RecommendedValue
+- Unit
+- CorrectiveAction
+- RequiresEngineerReview
+- SourceRulePackVersion
+
+## Next Implementation Target
+
+### Phase 26A - DraftRuleEngine v1
+
+Implement codified expert draft rules.
+
+The initial DraftRuleEngine should evaluate:
+
+- material
+- surface type
+- feature type
+- actual draft angle
+- texture depth
+- feature depth
+- cosmetic criticality
+- override flags
+
+It should output:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+## Upcoming Engineering Rule Packs
+
+### Phase 26B - Document DraftRuleEngine v1
+
+Document the first implemented rule engine.
+
+### Phase 27A - ShrinkageRuleEngine v1
+
+Implement shrinkage compensation checks from expert rules.
+
+### Phase 28A - WallFeatureRuleEngine v1
+
+Implement wall, rib, boss, radius, and abrupt-thickness checks.
+
+### Phase 29A - CoolingRuleEngine v1
+
+Implement cooling distance and thickness-ratio checks.
+
+### Phase 30A - Gate, Ejector, Venting, SteelSafe rule packs
+
+Implement preliminary rule evaluation from expert tables.
+
+## Mid-Term Engineering Roadmap
+
+- mesh validation
+- draft angle analyzer from STL normals
+- undercut detection
+- parting strategy report
+- cooling channel subtraction
+- ejector placement candidate generation
+- vent placement candidate generation
+- gate, runner, and sprue preliminary generation
+- collision and clearance report
+- HTML engineering report
+- packaged release ZIP
+- GitHub Actions CI
+
+## Production-Grade Definition
+
+PicoMoldForge is production-grade when it can safely accept real user configurations, validate geometry and project assumptions, generate repeatable output packages, report risks clearly, preserve run evidence, avoid destructive CLI behavior, and support expert engineering review.
+
+It is not production-grade merely because it generates STL files.

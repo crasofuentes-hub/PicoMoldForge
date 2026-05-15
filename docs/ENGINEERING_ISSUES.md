@@ -22,10 +22,10 @@ The issue model allows the generator and reports to express engineering findings
 
 Current code contracts:
 
-- `EngineeringSeverity`
-- `EngineeringIssue`
-- `EngineeringRuleResult`
-- `EngineeringIssueFactory`
+- EngineeringSeverity
+- EngineeringIssue
+- EngineeringRuleResult
+- EngineeringIssueFactory
 
 Location:
 
@@ -69,7 +69,7 @@ Each issue includes:
 
 ## Validation Rules
 
-`EngineeringIssue.Validate()` enforces:
+EngineeringIssue.Validate enforces:
 
 - RuleId is required.
 - Category is required.
@@ -81,7 +81,7 @@ Each issue includes:
 
 ## EngineeringRuleResult
 
-`EngineeringRuleResult` groups issues from one rule engine or rule pack.
+EngineeringRuleResult groups issues from one rule engine or rule pack.
 
 It computes:
 
@@ -96,9 +96,7 @@ It computes:
 
 This lets reports summarize engineering validation results without each rule engine inventing its own status model.
 
-## Example Draft Issue
-
-Example warning:
+## Example Draft Warning
 
     RuleId: draft.wall.abs.smooth.minimum
     Severity: Warning
@@ -114,7 +112,7 @@ Example warning:
     RequiresEngineerReview: false
     SourceRulePackVersion: expert-injection-mold-rules.v1
 
-Example fail:
+## Example Draft Fail
 
     RuleId: draft.shutoff.minimum
     Severity: Fail
@@ -171,4 +169,4 @@ It should output:
 
 - EngineeringRuleResult
 - EngineeringIssue records
-- PASS/WARNING/FAIL/NEEDS_ENGINEER_REVIEW findings
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
