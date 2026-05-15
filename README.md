@@ -515,3 +515,32 @@ The schemas are documented in:
 
     docs/SCHEMAS.md
 
+## Output path safety
+
+PicoMoldForge protects generator output paths before writing or cleaning output folders.
+
+This is especially important when using:
+
+    --clean-output
+    --output <path>
+
+The generator refuses unsafe output directories, including:
+
+- filesystem roots such as `C:\`
+- the current working directory
+- the config file directory
+- user profile root
+- Program Files root
+- Windows system directory
+- paths that point to an existing file
+
+Safe example:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output --output ".\my-generated-output"
+
+The generator prints:
+
+    Output path safety: PASS
+
+when the resolved output path passes safety checks.
+

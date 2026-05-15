@@ -591,3 +591,45 @@ Expected verification message:
 
     RunManifest SHA256 checks: PASS
 
+## output path safety
+
+The generator validates the final resolved output directory before generation.
+
+This applies to:
+
+    outputDirectory from project JSON
+    --output <path> CLI override
+    --clean-output deletion target
+
+Unsafe paths are rejected before generation starts.
+
+Rejected output targets include:
+
+    filesystem root
+    current working directory
+    config directory
+    user profile root
+    Program Files root
+    system directory
+    existing file path
+
+Example rejected cases:
+
+    --output C:\
+    --output .
+    --output <directory containing project.json>
+    --output C:\Users\<user>
+    --output C:\Program Files
+    --output C:\Windows\System32
+    --output existing-file.txt
+
+Safe command:
+
+    .\publish\PicoMoldForge.Generator\PicoMoldForge.Generator.exe --config ".\samples\generator-valid-project.json" --generate-all --clean-output --output ".\my-generated-output"
+
+Expected safety line:
+
+    Output path safety: PASS
+
+The safety guard is intended to prevent accidental destructive deletes when --clean-output is used.
+
