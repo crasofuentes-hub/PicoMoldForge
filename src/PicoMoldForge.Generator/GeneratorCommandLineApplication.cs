@@ -70,7 +70,10 @@ public static class GeneratorCommandLineApplication
                 output.WriteLine($"Output override: {resolvedOutputOverride}");
             }
 
+            GeneratorOutputPathGuard.EnsureSafeForGeneration(input);
+
             output.WriteLine("Generation input validation: PASS");
+            output.WriteLine("Output path safety: PASS");
 
             if (cleanOutput && Directory.Exists(input.ResolvedOutputDirectory))
             {
@@ -161,6 +164,9 @@ public static class GeneratorCommandLineApplication
         output.WriteLine("  --generate-all      Generate the full preliminary output package.");
         output.WriteLine("  --clean-output      Delete the resolved output directory before generation.");
         output.WriteLine("  --output <path>     Override the outputDirectory configured in the project JSON.");
+        output.WriteLine();
+        output.WriteLine("Safety:");
+        output.WriteLine("  Output paths cannot be filesystem roots, the current working directory, the config directory, user profile root, Program Files root, system directory, or an existing file.");
         output.WriteLine();
         output.WriteLine("Generated metadata:");
         output.WriteLine("  RunManifest.json    Machine-readable manifest for each generator run.");
