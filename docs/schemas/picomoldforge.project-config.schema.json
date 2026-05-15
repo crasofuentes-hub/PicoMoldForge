@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/crasofuentes-hub/PicoMoldForge/schemas/picomoldforge.project-config.schema.json",
+  "title": "PicoMoldForge Project Config",
+  "description": "JSON schema for PicoMoldForge generator project configuration.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "projectName",
+    "inputPath",
+    "outputDirectory",
+    "mode",
+    "standard",
+    "voxelResolutionMm",
+    "material",
+    "machine",
+    "moldBlock",
+    "cooling",
+    "lattice",
+    "moldSystem",
+    "dfam"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Optional future config schema version.",
+      "const": "picomoldforge.project-config.v1"
+    },
+    "projectName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outputDirectory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "standard": {
+      "type": "string",
+      "minLength": 1
+    },
+    "voxelResolutionMm": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "shrinkageRate"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "shrinkageRate": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "machine": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "buildVolumeXmm", "buildVolumeYmm", "buildVolumeZmm"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "buildVolumeXmm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "buildVolumeYmm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "buildVolumeZmm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "moldBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minXmm", "minYmm", "minZmm", "maxXmm", "maxYmm", "maxZmm"],
+      "properties": {
+        "minXmm": { "type": "number" },
+        "minYmm": { "type": "number" },
+        "minZmm": { "type": "number" },
+        "maxXmm": { "type": "number" },
+        "maxYmm": { "type": "number" },
+        "maxZmm": { "type": "number" }
+      }
+    },
+    "parting": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["Auto", "Manual"]
+        },
+        "axis": {
+          "type": "string",
+          "enum": ["X", "Y", "Z"]
+        },
+        "offsetMm": {
+          "type": "number"
+        }
+      }
+    },
+    "cooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partSizeXmm",
+        "partSizeYmm",
+        "partSizeZmm",
+        "channelDiameterMm",
+        "channelSpacingMm",
+        "minimumClearanceMm",
+        "channelCount"
+      ],
+      "properties": {
+        "partSizeXmm": { "type": "number", "exclusiveMinimum": 0 },
+        "partSizeYmm": { "type": "number", "exclusiveMinimum": 0 },
+        "partSizeZmm": { "type": "number", "exclusiveMinimum": 0 },
+        "channelDiameterMm": { "type": "number", "exclusiveMinimum": 0 },
+        "channelSpacingMm": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumClearanceMm": { "type": "number", "minimum": 0 },
+        "channelCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "lattice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regionName",
+        "minXmm",
+        "minYmm",
+        "minZmm",
+        "maxXmm",
+        "maxYmm",
+        "maxZmm",
+        "cellSizeMm",
+        "beamRadiusMm",
+        "targetRelativeDensity"
+      ],
+      "properties": {
+        "regionName": { "type": "string", "minLength": 1 },
+        "minXmm": { "type": "number" },
+        "minYmm": { "type": "number" },
+        "minZmm": { "type": "number" },
+        "maxXmm": { "type": "number" },
+        "maxYmm": { "type": "number" },
+        "maxZmm": { "type": "number" },
+        "cellSizeMm": { "type": "number", "exclusiveMinimum": 0 },
+        "beamRadiusMm": { "type": "number", "exclusiveMinimum": 0 },
+        "targetRelativeDensity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "moldSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partSizeXmm",
+        "partSizeYmm",
+        "partSizeZmm",
+        "moldMarginMm",
+        "ejectorPinDiameterMm",
+        "ejectorPinCount",
+        "ventWidthMm",
+        "ventDepthMm",
+        "insertClearanceMm"
+      ],
+      "properties": {
+        "partSizeXmm": { "type": "number", "exclusiveMinimum": 0 },
+        "partSizeYmm": { "type": "number", "exclusiveMinimum": 0 },
+        "partSizeZmm": { "type": "number", "exclusiveMinimum": 0 },
+        "moldMarginMm": { "type": "number", "minimum": 0 },
+        "ejectorPinDiameterMm": { "type": "number", "exclusiveMinimum": 0 },
+        "ejectorPinCount": { "type": "integer", "minimum": 1 },
+        "ventWidthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "ventDepthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "insertClearanceMm": { "type": "number", "minimum": 0 }
+      }
+    },
+    "dfam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumWallThicknessMm",
+        "recommendedMinimumWallThicknessMm",
+        "usesPreliminaryGeometry"
+      ],
+      "properties": {
+        "minimumWallThicknessMm": { "type": "number", "exclusiveMinimum": 0 },
+        "recommendedMinimumWallThicknessMm": { "type": "number", "exclusiveMinimum": 0 },
+        "usesPreliminaryGeometry": { "type": "boolean" }
+      }
+    }
+  }
+}
