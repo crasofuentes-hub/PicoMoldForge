@@ -484,3 +484,34 @@ The publish verification script validates artifact existence, file size, and SHA
 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
 
+## JSON schema contracts
+
+PicoMoldForge includes JSON schema contracts for machine-readable validation and integration workflows.
+
+Current schemas:
+
+- `docs/schemas/picomoldforge.project-config.schema.json`
+- `docs/schemas/picomoldforge.final-project-report.schema.json`
+- `docs/schemas/picomoldforge.run-manifest.schema.json`
+
+The schemas document the current project configuration, final report, and run manifest contracts.
+
+RunManifest schema includes artifact integrity fields:
+
+- `FileName`
+- `Path`
+- `SizeBytes`
+- `Sha256`
+
+Schema verification:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-schemas.ps1"
+
+Full generator verification:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-generator-publish.ps1"
+
+The schemas are documented in:
+
+    docs/SCHEMAS.md
+

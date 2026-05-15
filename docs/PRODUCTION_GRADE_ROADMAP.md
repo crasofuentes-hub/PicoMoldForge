@@ -40,7 +40,7 @@ Production-grade means:
 
 ## Immediate Roadmap
 
-### Phase 22A â€” Preserve expert engineering rules
+### Phase 22A Ã¢â‚¬â€ Preserve expert engineering rules
 
 Create repository documentation for:
 
@@ -48,7 +48,7 @@ Create repository documentation for:
 - production-grade roadmap
 - implementation sequence
 
-### Phase 22B â€” SHA256 checksums in RunManifest.json
+### Phase 22B Ã¢â‚¬â€ SHA256 checksums in RunManifest.json
 
 Add SHA256 for every generated artifact.
 
@@ -59,7 +59,7 @@ Expected manifest artifact fields:
 - SizeBytes
 - Sha256
 
-### Phase 23A â€” JSON schemas
+### Phase 23A Ã¢â‚¬â€ JSON schemas
 
 Add schemas for:
 
@@ -69,7 +69,7 @@ Add schemas for:
 
 Schemas must include versioning.
 
-### Phase 24A â€” CLI and path safety
+### Phase 24A Ã¢â‚¬â€ CLI and path safety
 
 Harden:
 
@@ -80,7 +80,7 @@ Harden:
 - missing permissions
 - exit codes
 
-### Phase 25A â€” Engineering rule engine foundation
+### Phase 25A Ã¢â‚¬â€ Engineering rule engine foundation
 
 Create generic issue/reporting contracts:
 
@@ -91,23 +91,23 @@ Create generic issue/reporting contracts:
 - CorrectiveAction
 - RequiresEngineerReview
 
-### Phase 25B â€” DraftRuleEngine v1
+### Phase 25B Ã¢â‚¬â€ DraftRuleEngine v1
 
 Implement codified expert draft rules.
 
-### Phase 26A â€” ShrinkageRuleEngine v1
+### Phase 26A Ã¢â‚¬â€ ShrinkageRuleEngine v1
 
 Implement shrinkage compensation checks.
 
-### Phase 27A â€” WallFeatureRuleEngine v1
+### Phase 27A Ã¢â‚¬â€ WallFeatureRuleEngine v1
 
 Implement wall, rib, boss, radius, and abrupt-thickness checks.
 
-### Phase 28A â€” CoolingRuleEngine v1
+### Phase 28A Ã¢â‚¬â€ CoolingRuleEngine v1
 
 Implement cooling distance and thickness-ratio checks.
 
-### Phase 29A â€” Gate/Ejector/Venting/SteelSafe rule packs
+### Phase 29A Ã¢â‚¬â€ Gate/Ejector/Venting/SteelSafe rule packs
 
 Implement preliminary rule evaluation from expert tables.
 
@@ -131,7 +131,7 @@ Implement preliminary rule evaluation from expert tables.
 PicoMoldForge is production-grade when it can safely accept real user configurations, validate geometry and project assumptions, generate repeatable output packages, report risks clearly, preserve run evidence, avoid destructive CLI behavior, and support expert engineering review.
 
 It is not production-grade merely because it generates STL files.
-### Phase 22C — Document RunManifest SHA256 integrity — DONE
+### Phase 22C â€” Document RunManifest SHA256 integrity â€” DONE
 
 RunManifest.json artifact entries now include:
 
@@ -141,3 +141,27 @@ RunManifest.json artifact entries now include:
 - Sha256
 
 The publish verification script recomputes artifact hashes and fails if any stored checksum does not match the generated file.
+
+### Phase 23B — Document JSON schema contracts — DONE
+
+PicoMoldForge now documents JSON schema contracts for:
+
+- project config
+- FinalProjectReport.json
+- RunManifest.json
+
+The schemas are located in:
+
+- docs/schemas/picomoldforge.project-config.schema.json
+- docs/schemas/picomoldforge.final-project-report.schema.json
+- docs/schemas/picomoldforge.run-manifest.schema.json
+
+The schema documentation is located in:
+
+- docs/SCHEMAS.md
+
+Verification is handled by:
+
+- scripts/verify-schemas.ps1
+
+RunManifest schema includes artifact SHA-256 integrity metadata.
