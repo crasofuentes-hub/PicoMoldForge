@@ -26,10 +26,13 @@ public sealed class DraftRuleEngine
 
     public decimal ResolveRequiredDraftDeg(DraftRuleInput input)
     {
-        var baseDraftDeg = ResolveBaseMaterialDraftDeg(input.Material, input.SurfaceType);
+        var featureMinimumDeg = ResolveFeatureMinimumDraftDeg(input.FeatureType);
+        var baseDraftDeg = input.FeatureType == DraftFeatureType.Wall
+            ? ResolveBaseMaterialDraftDeg(input.Material, input.SurfaceType)
+            : featureMinimumDeg;
+
         var textureIncrementDeg = ResolveTextureIncrementDeg(input.TextureDepthMm);
         var depthIncrementDeg = ResolveDepthIncrementDeg(input.FeatureDepthMm);
-        var featureMinimumDeg = ResolveFeatureMinimumDraftDeg(input.FeatureType);
 
         var required = baseDraftDeg + textureIncrementDeg + depthIncrementDeg;
 
@@ -50,9 +53,10 @@ public sealed class DraftRuleEngine
 
     public decimal ResolveRecommendedDraftDeg(DraftRuleInput input, decimal requiredDraftDeg)
     {
-        var recommended = ResolveBaseRecommendedDraftDeg(input.Material, input.SurfaceType);
+        var recommended = input.FeatureType == DraftFeatureType.Wall
+            ? ResolveBaseRecommendedDraftDeg(input.Material, input.SurfaceType)
+            : ResolveFeatureRecommendedDraftDeg(input.FeatureType);
 
-        recommended = Math.Max(recommended, ResolveFeatureRecommendedDraftDeg(input.FeatureType));
         recommended = Math.Max(recommended, requiredDraftDeg);
 
         return recommended;
