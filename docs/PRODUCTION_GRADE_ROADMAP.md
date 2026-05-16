@@ -311,7 +311,7 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 208 tests passing
+- 219 tests passing
 
 ### Phase 30A - EjectorRuleEngine v1 - DONE
 
@@ -347,4 +347,42 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 208 tests passing
+- 219 tests passing
+
+### Phase 31A - VentingRuleEngine v1 - DONE
+
+PicoMoldForge now implements preliminary venting validation based on the expert injection mold rule pack.
+
+VentingRuleEngine v1 evaluates:
+
+- vent depth
+- vent width
+- vent land length
+- end-of-fill vent risk
+- gas-trap risk
+- flash-sensitive status
+- long-flow-path status
+- critical-to-quality status
+- engineer override flag
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+Documentation:
+
+- docs/VENTING_RULE_ENGINE.md
+
+Current supported checks:
+
+- VentDepthMm
+- VentWidthMm
+- VentLandLengthMm
+- EndOfFillVentRiskScore
+- GasTrapRiskScore
+
+Current verified baseline after this phase:
+
+- 219 tests passing

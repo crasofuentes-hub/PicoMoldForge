@@ -9,7 +9,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Generator executable: available
 - PicoGK integration: active
 - End-to-end sample: available
-- Verified baseline: 208 tests passing
+- Verified baseline: 219 tests passing
 - License: MIT
 - Repository visibility: public
 - JSON config workflow: available
@@ -26,6 +26,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - WallFeatureRuleEngine v1: available
 - CoolingRuleEngine v1: available
 - EjectorRuleEngine v1: available
+- VentingRuleEngine v1: available
 
 ## What it generates
 
@@ -641,7 +642,7 @@ Current rule-engine status:
 - Gate rules: documented, not implemented yet
 - Cooling rules: implemented as CoolingRuleEngine v1
 - Ejector rules: implemented as EjectorRuleEngine v1
-- Venting rules: documented, not implemented yet
+- Venting rules: implemented as VentingRuleEngine v1
 - Steel-safe rules: documented, not implemented yet
 - Wall/features rules: implemented as WallFeatureRuleEngine v1
 - Mold-base rules: documented, not implemented yet
@@ -766,3 +767,34 @@ Documentation:
 Important limitation:
 
 Ejector validation is preliminary and does not replace qualified mold engineer review, ejection-force calculation, deformation simulation, cosmetic approval, or tooling trial data.
+
+## VentingRuleEngine v1
+
+PicoMoldForge includes VentingRuleEngine v1 for preliminary venting-rule validation.
+
+It evaluates:
+
+- vent depth
+- vent width
+- vent land length
+- end-of-fill vent risk
+- gas-trap risk
+- flash-sensitive status
+- long-flow-path status
+- critical-to-quality status
+- engineer override flags
+
+It emits EngineeringIssue records with:
+
+- PASS
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Documentation:
+
+    docs/VENTING_RULE_ENGINE.md
+
+Important limitation:
+
+Venting validation is preliminary and does not replace qualified mold engineer review, mold-flow analysis, resin-specific venting guidance, flash-risk validation, burn-mark validation, short-shot validation, or tooling trial data.
