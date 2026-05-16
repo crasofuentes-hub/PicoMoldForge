@@ -24,6 +24,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - DraftRuleEngine v1: available
 - ShrinkageRuleEngine v1: available
 - WallFeatureRuleEngine v1: available
+- CoolingRuleEngine v1: available
 
 ## What it generates
 
@@ -637,7 +638,7 @@ Current rule-engine status:
 - Draft rules: implemented as DraftRuleEngine v1
 - Shrinkage rules: implemented as ShrinkageRuleEngine v1
 - Gate rules: documented, not implemented yet
-- Cooling rules: documented, not implemented yet
+- Cooling rules: implemented as CoolingRuleEngine v1
 - Ejector rules: documented, not implemented yet
 - Venting rules: documented, not implemented yet
 - Steel-safe rules: documented, not implemented yet
@@ -705,3 +706,32 @@ Documentation:
 Important limitation:
 
 Wall and feature validation is preliminary and does not replace qualified mold engineer review, mold-flow analysis, material supplier guidance, or tooling trial data.
+
+## CoolingRuleEngine v1
+
+PicoMoldForge includes CoolingRuleEngine v1 for preliminary cooling-rule validation.
+
+It evaluates:
+
+- cooling-channel distance to cavity as a diameter ratio
+- local wall-thickness jump ratio
+- cooling balance delta ratio
+- relative cooling-time ratio
+- cosmetic criticality
+- critical-to-quality status
+- engineer override flags
+
+It emits EngineeringIssue records with:
+
+- PASS
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Documentation:
+
+    docs/COOLING_RULE_ENGINE.md
+
+Important limitation:
+
+Cooling validation is preliminary and does not replace mold-flow analysis, thermal simulation, coolant-flow analysis, pressure-drop analysis, qualified mold engineer review, or actual tooling trial data.

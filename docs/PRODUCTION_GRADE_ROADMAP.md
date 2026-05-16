@@ -146,10 +146,6 @@ Each issue can carry:
 
 Document the first implemented rule engine.
 
-### Phase 29A - CoolingRuleEngine v1
-
-Implement cooling distance and thickness-ratio checks.
-
 ### Phase 30A - Gate, Ejector, Venting, SteelSafe rule packs
 
 Implement preliminary rule evaluation from expert tables.
@@ -281,3 +277,38 @@ Current supported checks:
 - BossWallThicknessRatio
 - AbruptThicknessJumpRatio
 - InternalRadiusRatio
+
+### Phase 29A - CoolingRuleEngine v1 - DONE
+
+PicoMoldForge now implements preliminary cooling validation based on the expert injection mold rule pack.
+
+CoolingRuleEngine v1 evaluates:
+
+- channel distance to cavity as a diameter ratio
+- local thickness jump ratio
+- cooling balance delta ratio
+- relative cooling-time ratio
+- cosmetic criticality
+- critical-to-quality status
+- engineer override flag
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+Documentation:
+
+- docs/COOLING_RULE_ENGINE.md
+
+Current supported checks:
+
+- ChannelDistanceToCavityDiameterRatio
+- LocalThicknessJumpRatio
+- CoolingBalanceDeltaRatio
+- RelativeCoolingTimeRatio
+
+Current verified baseline after this phase:
+
+- 197 tests passing
