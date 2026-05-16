@@ -23,6 +23,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Engineering issue contracts: available
 - DraftRuleEngine v1: available
 - ShrinkageRuleEngine v1: available
+- WallFeatureRuleEngine v1: available
 
 ## What it generates
 
@@ -640,7 +641,7 @@ Current rule-engine status:
 - Ejector rules: documented, not implemented yet
 - Venting rules: documented, not implemented yet
 - Steel-safe rules: documented, not implemented yet
-- Wall/features rules: documented, not implemented yet
+- Wall/features rules: implemented as WallFeatureRuleEngine v1
 - Mold-base rules: documented, not implemented yet
 
 Important limitation:
@@ -673,3 +674,34 @@ Documentation:
 Important limitation:
 
 Shrinkage validation is preliminary and does not replace resin datasheets, mold-flow simulation, trial data, or qualified mold engineer review.
+
+## WallFeatureRuleEngine v1
+
+PicoMoldForge includes WallFeatureRuleEngine v1 for preliminary wall and feature validation.
+
+It evaluates:
+
+- nominal wall thickness
+- rib thickness ratio
+- rib height ratio
+- boss wall thickness ratio
+- abrupt thickness jump ratio
+- internal radius ratio
+- cosmetic criticality
+- critical-to-quality status
+- engineer override flags
+
+It emits EngineeringIssue records with:
+
+- PASS
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Documentation:
+
+    docs/WALL_FEATURE_RULE_ENGINE.md
+
+Important limitation:
+
+Wall and feature validation is preliminary and does not replace qualified mold engineer review, mold-flow analysis, material supplier guidance, or tooling trial data.

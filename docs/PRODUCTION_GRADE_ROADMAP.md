@@ -146,10 +146,6 @@ Each issue can carry:
 
 Document the first implemented rule engine.
 
-### Phase 28A - WallFeatureRuleEngine v1
-
-Implement wall, rib, boss, radius, and abrupt-thickness checks.
-
 ### Phase 29A - CoolingRuleEngine v1
 
 Implement cooling distance and thickness-ratio checks.
@@ -239,3 +235,49 @@ Current supported materials:
 - POM
 - PE
 - General
+
+### Phase 28A - WallFeatureRuleEngine v1 - DONE
+
+PicoMoldForge now implements wall and feature validation based on the expert injection mold rule pack.
+
+WallFeatureRuleEngine v1 evaluates:
+
+- material group
+- nominal wall thickness
+- rib thickness ratio
+- rib height ratio
+- boss wall thickness ratio
+- abrupt thickness jump ratio
+- internal radius ratio
+- cosmetic criticality
+- critical-to-quality status
+- engineer override flag
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+Documentation:
+
+- docs/WALL_FEATURE_RULE_ENGINE.md
+
+Current supported materials:
+
+- ABS
+- PC
+- PP
+- Nylon/PA
+- POM
+- PE
+- General
+
+Current supported checks:
+
+- NominalWallThickness
+- RibThicknessRatio
+- RibHeightRatio
+- BossWallThicknessRatio
+- AbruptThicknessJumpRatio
+- InternalRadiusRatio
