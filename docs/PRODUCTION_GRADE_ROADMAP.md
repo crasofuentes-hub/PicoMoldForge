@@ -146,10 +146,6 @@ Each issue can carry:
 
 Document the first implemented rule engine.
 
-### Phase 27A - ShrinkageRuleEngine v1
-
-Implement shrinkage compensation checks from expert rules.
-
 ### Phase 28A - WallFeatureRuleEngine v1
 
 Implement wall, rib, boss, radius, and abrupt-thickness checks.
@@ -211,3 +207,35 @@ The implementation is based on the expert injection mold rule pack documented in
 Current verified baseline after this phase:
 
 - 165 tests passing
+
+### Phase 27A - ShrinkageRuleEngine v1 - DONE
+
+PicoMoldForge now implements shrinkage validation based on the expert injection mold rule pack.
+
+ShrinkageRuleEngine v1 evaluates:
+
+- material group
+- configured shrinkage rate
+- critical dimension status
+- datasheet-value flag
+- engineer override flag
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+Documentation:
+
+- docs/SHRINKAGE_RULE_ENGINE.md
+
+Current supported materials:
+
+- ABS
+- PP
+- PC
+- Nylon/PA
+- POM
+- PE
+- General

@@ -22,6 +22,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Expert injection mold rules: captured
 - Engineering issue contracts: available
 - DraftRuleEngine v1: available
+- ShrinkageRuleEngine v1: available
 
 ## What it generates
 
@@ -633,7 +634,7 @@ Engineering rule foundation:
 Current rule-engine status:
 
 - Draft rules: implemented as DraftRuleEngine v1
-- Shrinkage rules: documented, not implemented yet
+- Shrinkage rules: implemented as ShrinkageRuleEngine v1
 - Gate rules: documented, not implemented yet
 - Cooling rules: documented, not implemented yet
 - Ejector rules: documented, not implemented yet
@@ -646,3 +647,29 @@ Important limitation:
 
 PicoMoldForge does not yet produce certified production-ready injection molds automatically. Generated geometry and engineering issues require review by qualified mold engineers.
 
+## ShrinkageRuleEngine v1
+
+PicoMoldForge includes ShrinkageRuleEngine v1 for preliminary shrinkage validation.
+
+It evaluates:
+
+- material group
+- configured shrinkage rate
+- critical dimension status
+- whether the value is datasheet-based
+- engineer override flags
+
+It emits EngineeringIssue records with:
+
+- PASS
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Documentation:
+
+    docs/SHRINKAGE_RULE_ENGINE.md
+
+Important limitation:
+
+Shrinkage validation is preliminary and does not replace resin datasheets, mold-flow simulation, trial data, or qualified mold engineer review.
