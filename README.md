@@ -9,7 +9,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Generator executable: available
 - PicoGK integration: active
 - End-to-end sample: available
-- Verified baseline: 219 tests passing
+- Verified baseline: 230 tests passing
 - License: MIT
 - Repository visibility: public
 - JSON config workflow: available
@@ -27,6 +27,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - CoolingRuleEngine v1: available
 - EjectorRuleEngine v1: available
 - VentingRuleEngine v1: available
+- SteelSafeRuleEngine v1: available
 
 ## What it generates
 
@@ -643,7 +644,7 @@ Current rule-engine status:
 - Cooling rules: implemented as CoolingRuleEngine v1
 - Ejector rules: implemented as EjectorRuleEngine v1
 - Venting rules: implemented as VentingRuleEngine v1
-- Steel-safe rules: documented, not implemented yet
+- Steel-safe rules: implemented as SteelSafeRuleEngine v1
 - Wall/features rules: implemented as WallFeatureRuleEngine v1
 - Mold-base rules: documented, not implemented yet
 
@@ -798,3 +799,26 @@ Documentation:
 Important limitation:
 
 Venting validation is preliminary and does not replace qualified mold engineer review, mold-flow analysis, resin-specific venting guidance, flash-risk validation, burn-mark validation, short-shot validation, or tooling trial data.
+
+## SteelSafeRuleEngine v1
+
+PicoMoldForge includes SteelSafeRuleEngine v1 for preliminary steel-safe allowance validation.
+
+It evaluates:
+
+- general steel-safe allowance
+- critical dimension allowance
+- shutoff allowance
+- parting-line allowance
+- cosmetic rework risk
+- critical-to-quality status
+- cosmetic surface status
+- engineer override flags
+
+Documentation:
+
+    docs/STEEL_SAFE_RULE_ENGINE.md
+
+Important limitation:
+
+Steel-safe validation is preliminary and does not replace qualified mold engineer review, moldmaker feedback, trial tuning, final tool review, or cosmetic signoff.

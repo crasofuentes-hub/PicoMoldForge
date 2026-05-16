@@ -311,7 +311,7 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 219 tests passing
+- 230 tests passing
 
 ### Phase 30A - EjectorRuleEngine v1 - DONE
 
@@ -347,7 +347,7 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 219 tests passing
+- 230 tests passing
 
 ### Phase 31A - VentingRuleEngine v1 - DONE
 
@@ -385,4 +385,27 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 219 tests passing
+- 230 tests passing
+
+### Phase 32A - SteelSafeRuleEngine v1 - DONE
+
+PicoMoldForge now implements preliminary steel-safe allowance validation.
+
+SteelSafeRuleEngine v1 evaluates:
+
+- general steel-safe allowance
+- critical dimension allowance
+- shutoff allowance
+- parting-line allowance
+- cosmetic rework risk
+- critical-to-quality status
+- cosmetic surface status
+- engineer override flag
+
+Documentation:
+
+- docs/STEEL_SAFE_RULE_ENGINE.md
+
+Current verified baseline after this phase:
+
+- 230 tests passing
