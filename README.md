@@ -9,7 +9,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Generator executable: available
 - PicoGK integration: active
 - End-to-end sample: available
-- Verified baseline: 165 tests passing
+- Verified baseline: 208 tests passing
 - License: MIT
 - Repository visibility: public
 - JSON config workflow: available
@@ -25,6 +25,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - ShrinkageRuleEngine v1: available
 - WallFeatureRuleEngine v1: available
 - CoolingRuleEngine v1: available
+- EjectorRuleEngine v1: available
 
 ## What it generates
 
@@ -639,7 +640,7 @@ Current rule-engine status:
 - Shrinkage rules: implemented as ShrinkageRuleEngine v1
 - Gate rules: documented, not implemented yet
 - Cooling rules: implemented as CoolingRuleEngine v1
-- Ejector rules: documented, not implemented yet
+- Ejector rules: implemented as EjectorRuleEngine v1
 - Venting rules: documented, not implemented yet
 - Steel-safe rules: documented, not implemented yet
 - Wall/features rules: implemented as WallFeatureRuleEngine v1
@@ -735,3 +736,33 @@ Documentation:
 Important limitation:
 
 Cooling validation is preliminary and does not replace mold-flow analysis, thermal simulation, coolant-flow analysis, pressure-drop analysis, qualified mold engineer review, or actual tooling trial data.
+
+## EjectorRuleEngine v1
+
+PicoMoldForge includes EjectorRuleEngine v1 for preliminary ejector-rule validation.
+
+It evaluates:
+
+- ejector pin land clearance
+- ejector surface placement risk
+- local draft at ejector location
+- ejector concentration ratio
+- cosmetic surface status
+- thin-wall status
+- critical-to-quality status
+- engineer override flags
+
+It emits EngineeringIssue records with:
+
+- PASS
+- WARNING
+- FAIL
+- NEEDS_ENGINEER_REVIEW
+
+Documentation:
+
+    docs/EJECTOR_RULE_ENGINE.md
+
+Important limitation:
+
+Ejector validation is preliminary and does not replace qualified mold engineer review, ejection-force calculation, deformation simulation, cosmetic approval, or tooling trial data.

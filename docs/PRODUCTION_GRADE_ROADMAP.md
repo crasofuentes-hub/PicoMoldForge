@@ -311,4 +311,40 @@ Current supported checks:
 
 Current verified baseline after this phase:
 
-- 197 tests passing
+- 208 tests passing
+
+### Phase 30A - EjectorRuleEngine v1 - DONE
+
+PicoMoldForge now implements preliminary ejector validation based on the expert injection mold rule pack.
+
+EjectorRuleEngine v1 evaluates:
+
+- ejector pin land clearance
+- ejector surface placement risk
+- draft at ejector location
+- ejector concentration ratio
+- cosmetic surface status
+- thin-wall status
+- critical-to-quality status
+- engineer override flag
+
+It outputs:
+
+- EngineeringRuleResult
+- EngineeringIssue records
+- PASS, WARNING, FAIL, or NEEDS_ENGINEER_REVIEW findings
+
+Documentation:
+
+- docs/EJECTOR_RULE_ENGINE.md
+
+Current supported checks:
+
+- PinLandClearanceMm
+- SurfacePlacementRiskScore
+- DraftAtEjectorLocationDeg
+- EjectorConcentrationRatio
+
+Current verified baseline after this phase:
+
+- 208 tests passing
