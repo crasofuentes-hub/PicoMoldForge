@@ -31,6 +31,17 @@ public sealed class DraftBasicGeometryAnalyzer
             RuleResult: ruleResult);
     }
 
+    private static void ValidateInput(DraftBasicGeometryAnalysisInput analysisInput)
+    {
+        ArgumentNullException.ThrowIfNull(analysisInput.Faces);
+
+        if (analysisInput.MinimumRequiredDraftDeg < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(analysisInput.MinimumRequiredDraftDeg),
+                "Minimum required draft angle cannot be negative.");
+        }
+    }
     private static DraftFaceAnalysisResult AnalyzeFace(
         DraftFaceSample face,
         UnitVector pull,
