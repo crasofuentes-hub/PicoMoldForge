@@ -2,6 +2,8 @@ using System.Text.Json;
 using PicoMoldForge.Core.Analysis;
 using PicoMoldForge.Core.DfAM;
 using PicoMoldForge.Core.Exports;
+using PicoMoldForge.Core.Engineering.DraftAnalysis;
+using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Parting;
 using Xunit;
 
@@ -141,7 +143,7 @@ public sealed class FinalReportJsonWriterTests
     {
         var partingPlane = new PartingPlaneResult(
             PartingPlaneMode.Automatic,
-            PartingAxis.X,
+            PicoMoldForge.Core.Parting.PartingAxis.X,
             new OpeningDirection3(1.0f, 0.0f, 0.0f),
             PlaneOffsetMm: 50.0f,
             Method: "Dominant bounding-box axis with center-plane placement.",

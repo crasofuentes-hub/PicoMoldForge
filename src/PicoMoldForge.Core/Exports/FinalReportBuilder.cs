@@ -11,7 +11,8 @@ public sealed class FinalReportBuilder
         PartAnalysisReport? partAnalysis,
         DfAMReport? dfam,
         BaselineStatus baseline,
-        DateTimeOffset generatedAtUtc)
+        DateTimeOffset generatedAtUtc,
+        FunctionalMoldAlphaReport? functionalMoldAlpha = null)
     {
         if (string.IsNullOrWhiteSpace(projectName))
         {
@@ -39,6 +40,18 @@ public sealed class FinalReportBuilder
             throw new ArgumentException(
                 "Invalid baseline status: " + string.Join(" ", baselineErrors),
                 nameof(baseline));
+        }
+
+        if (functionalMoldAlpha is not null)
+        {
+            var functionalErrors = functionalMoldAlpha.Validate();
+
+            if (functionalErrors.Count > 0)
+            {
+                throw new ArgumentException(
+                    "Invalid functional mold alpha report: " + string.Join(" ", functionalErrors),
+                    nameof(functionalMoldAlpha));
+            }
         }
 
         var warnings = new List<string>
@@ -103,6 +116,7 @@ public sealed class FinalReportBuilder
             partAnalysis,
             dfam,
             baseline,
+            functionalMoldAlpha,
             warnings);
 
         var reportErrors = report.Validate();
