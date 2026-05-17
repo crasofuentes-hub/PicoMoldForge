@@ -9,7 +9,7 @@ It includes a publishable Windows command-line generator that reads a project JS
 - Generator executable: available
 - PicoGK integration: active
 - End-to-end sample: available
-- Verified baseline: 230 tests passing
+- Verified baseline: 305 tests passing
 - License: MIT
 - Repository visibility: public
 - JSON config workflow: available
@@ -28,7 +28,11 @@ It includes a publishable Windows command-line generator that reads a project JS
 - EjectorRuleEngine v1: available
 - VentingRuleEngine v1: available
 - SteelSafeRuleEngine v1: available
-
+- Functional Mold Alpha v1: closed
+- FunctionalMoldAlphaReport: integrated into FinalProjectReport.json
+- Generator emits FunctionalMoldAlpha from the real generator pipeline
+- Alpha verification command: available
+- Latest alpha generator integration commit: 87462ff
 ## What it generates
 
 The current generator produces a preliminary output package with:
@@ -175,15 +179,26 @@ Additional documentation is available in:
 
 ## Next development track
 
-The next major development step is to move from preliminary diagnostic geometry toward functional mold geometry:
+Current completed alpha state:
 
-- real boolean cavity/core generation
-- cooling channel subtraction
-- runner/gate/sprue generation
-- ejector/vent/insert collision checks
-- draft, undercut, and wall-thickness analysis
-- stronger manufacturing validation reports
+- Functional Mold Alpha v1 is closed.
+- The generator now writes FunctionalMoldAlpha data into FinalProjectReport.json.
+- The generator produces preliminary BooleanCavity, BooleanCoreSide, BooleanCavitySide, CoolingDiagnostic, LatticeDiagnostic, MoldSystemDiagnostic, FinalProjectReport.json, and RunManifest.json.
+- The current system is alpha-functional, not production-certified.
 
+Next development step:
+
+Functional Mold Alpha v2 should connect more alpha metrics directly to actual generated geometry instead of approximate generator-derived summaries.
+
+Priority order:
+
+1. derive wall thickness from generated/voxel geometry
+2. derive draft and undercut risk from actual mesh normals
+3. emit real gate/runner/sprue geometry artifacts
+4. emit real ejector geometry artifacts
+5. subtract cooling/ejector/gate geometry from mold halves
+6. strengthen shutoff surfaces and parting-line geometry
+7. publish a real alpha release package
 ## License
 
 MIT License. See LICENSE.
