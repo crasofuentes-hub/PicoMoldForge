@@ -121,6 +121,11 @@ public sealed class GeneratorPipelineRunner
         var reportBuilder = new FinalReportBuilder();
         var manifest = reportBuilder.CreateStandardManifest(input.ResolvedOutputDirectory);
 
+        var functionalMoldAlpha = GeneratorFunctionalMoldAlphaReportFactory.Create(
+            input,
+            partAnalysis,
+            coolingPlan,
+            dfamReport);
         var finalReport = reportBuilder.Build(
             projectName: input.Config.ProjectName,
             manifest: manifest,
@@ -130,7 +135,8 @@ public sealed class GeneratorPipelineRunner
                 IsPassing: true,
                 TotalTests: 113,
                 Summary: "Baseline was passing before Phase 13B generator integration."),
-            generatedAtUtc: DateTimeOffset.UtcNow);
+            generatedAtUtc: DateTimeOffset.UtcNow,
+            functionalMoldAlpha: functionalMoldAlpha);
 
         var jsonWriter = new FinalReportJsonWriter();
         jsonWriter.WriteToFile(finalReport, finalReportPath);

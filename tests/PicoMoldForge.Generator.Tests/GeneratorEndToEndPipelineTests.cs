@@ -49,6 +49,14 @@ public sealed class GeneratorEndToEndPipelineTests
 
             Assert.Equal("Generator E2E Test", document.RootElement.GetProperty("ProjectName").GetString());
             Assert.True(document.RootElement.GetProperty("Baseline").GetProperty("IsPassing").GetBoolean());
+
+            var alpha = document.RootElement.GetProperty("FunctionalMoldAlpha");
+
+            Assert.True(alpha.GetProperty("IsAlphaComplete").GetBoolean());
+            Assert.True(alpha.GetProperty("OverallReadinessScore").GetDecimal() >= 0m);
+            Assert.True(alpha.GetProperty("Separation").GetProperty("QualityScore").GetDecimal() >= 0m);
+            Assert.True(alpha.GetProperty("CoolingChannels").GetProperty("ChannelCount").GetInt32() > 0);
+            Assert.True(alpha.GetProperty("EjectorCandidates").GetProperty("CandidateCount").GetInt32() > 0);
         }
         finally
         {
