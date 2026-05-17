@@ -822,3 +822,35 @@ Documentation:
 Important limitation:
 
 Steel-safe validation is preliminary and does not replace qualified mold engineer review, moldmaker feedback, trial tuning, final tool review, or cosmetic signoff.
+
+## Functional Mold Alpha v1
+
+PicoMoldForge now includes a bounded Functional Mold Alpha v1 verification path.
+
+Run:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-alpha.ps1
+
+Functional Mold Alpha v1 verifies:
+
+- core/cavity separation validation
+- mold separation engine
+- parting plane scoring
+- shutoff strategy contract
+- basic draft geometry analysis
+- voxel wall-thickness analysis
+- undercut risk analysis
+- cooling channel subtraction planning
+- gate/runner/sprue generation planning
+- ejector candidate generation
+- clearance collision matrix
+- integrated FunctionalMoldAlphaReport
+- baseline verification
+
+Documentation:
+
+    docs/FUNCTIONAL_MOLD_ALPHA_V1.md
+
+Important limitation:
+
+Functional Mold Alpha v1 is preliminary and does not certify production manufacturing. It still requires qualified mold engineering review, validated CAD/boolean integration, mold-flow analysis, toolmaker feedback, trial data, and customer/manufacturing signoff.

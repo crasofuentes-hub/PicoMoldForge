@@ -409,3 +409,35 @@ Documentation:
 Current verified baseline after this phase:
 
 - 230 tests passing
+
+### Functional Mold Alpha v1 - CLOSED
+
+This series is closed.
+
+Completed alpha components:
+
+- CoreCavitySeparationValidator v1
+- MoldSeparationEngine v1
+- PartingPlaneScorer v1
+- ShutoffStrategyEvaluator v1
+- DraftBasicGeometryAnalyzer v1
+- VoxelWallThicknessAnalyzer v1
+- UndercutRiskAnalyzer v1
+- CoolingChannelSubtractor v1
+- GateRunnerSprueGenerator v1
+- EjectorCandidateGenerator v1
+- ClearanceCollisionMatrix v1
+- FunctionalMoldAlphaReport v1
+- verify-alpha.ps1
+
+Closure command:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-alpha.ps1
+
+Next recommended series:
+
+- connect alpha metrics to actual generator output
+- generate FunctionalMoldAlphaReport from real generated artifacts
+- strengthen true CAD/boolean geometry generation
+- harden parting and shutoff geometry
+- prepare alpha release workflow
