@@ -10,6 +10,7 @@ public sealed record FinalProjectReport(
     PartAnalysisReport? PartAnalysis,
     DfAMReport? DfAM,
     BaselineStatus Baseline,
+    FunctionalMoldAlphaReport? FunctionalMoldAlpha,
     IReadOnlyList<string> Warnings)
 {
     public IReadOnlyList<string> Validate()
@@ -34,6 +35,14 @@ public sealed record FinalProjectReport(
         foreach (var baselineError in Baseline.Validate())
         {
             errors.Add($"Baseline: {baselineError}");
+        }
+
+        if (FunctionalMoldAlpha is not null)
+        {
+            foreach (var functionalError in FunctionalMoldAlpha.Validate())
+            {
+                errors.Add($"FunctionalMoldAlpha: {functionalError}");
+            }
         }
 
         return errors;

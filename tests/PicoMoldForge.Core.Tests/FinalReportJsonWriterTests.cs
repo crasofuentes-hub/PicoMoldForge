@@ -106,9 +106,37 @@ public sealed class FinalReportJsonWriterTests
                 IsPassing: true,
                 TotalTests: 91,
                 Summary: "Baseline passed."),
-            generatedAtUtc: new DateTimeOffset(2026, 5, 10, 8, 0, 0, TimeSpan.Zero));
+            generatedAtUtc: new DateTimeOffset(2026, 5, 10, 8, 0, 0, TimeSpan.Zero),
+            functionalMoldAlpha: CreateFunctionalMoldAlphaReport());
     }
 
+    private static FunctionalMoldAlphaReport CreateFunctionalMoldAlphaReport()
+    {
+        return new FunctionalMoldAlphaReport(
+            Separation: new CoreCavitySeparationSummary(
+                TotalHalfVoxelCount: 2000,
+                OverlapRatio: 0.001m,
+                GapRatio: 0.002m,
+                BalanceRatio: 0.98m,
+                QualityScore: 0.96m),
+            Shutoff: new ShutoffStrategySummary(
+                RegionCount: 1,
+                UndefinedRegionCount: 0,
+                CriticalRegionCount: 1,
+                MaximumGapMm: 0.01m,
+                MaximumOverlapMm: 0.01m,
+                QualityScore: 0.90m),
+            DraftGeometry: new DraftBasicGeometryAnalysisSummary(
+                FaceCount: 10,
+                PositiveDraftCount: 8,
+                LowDraftCount: 1,
+                ZeroDraftCount: 1,
+                NegativeDraftCount: 0,
+                InvalidNormalCount: 0,
+                RiskySurfaceAreaMm2: 12m,
+                MinimumObservedDraftDeg: 0.5m),
+            Warnings: new[] { "Functional Mold Alpha metrics are preliminary." });
+    }
     private static PartAnalysisReport CreatePartAnalysisReport()
     {
         var partingPlane = new PartingPlaneResult(

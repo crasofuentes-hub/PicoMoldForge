@@ -62,6 +62,30 @@ public sealed class FinalReportBuilder
             warnings.Add("DfAMReport was not provided.");
         }
 
+        if (functionalMoldAlpha is null)
+        {
+            warnings.Add("FunctionalMoldAlphaReport was not provided.");
+        }
+        else
+        {
+            foreach (var functionalWarning in functionalMoldAlpha.Warnings)
+            {
+                warnings.Add($"FunctionalMoldAlpha warning: {functionalWarning}");
+            }
+
+            if (functionalMoldAlpha.Separation is not null &&
+                functionalMoldAlpha.Separation.QualityScore < 0.85m)
+            {
+                warnings.Add("FunctionalMoldAlpha separation quality is below the minimum alpha threshold.");
+            }
+
+            if (functionalMoldAlpha.DraftGeometry is not null &&
+                functionalMoldAlpha.DraftGeometry.NegativeDraftCount > 0)
+            {
+                warnings.Add("FunctionalMoldAlpha draft geometry contains negative draft faces.");
+            }
+        }
+
         if (dfam is not null && !dfam.IsSuccessful)
         {
             warnings.Add("DfAMReport indicates one or more blocking checks failed.");
