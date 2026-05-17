@@ -87,8 +87,9 @@ public sealed class EjectorCandidateGeneratorTests
             Candidate("low-support", 50m, 50m, 20m, supportedArea: 5m)
         }));
 
-        Assert.False(result.RuleResult.HasFailures);
+        Assert.True(result.RuleResult.HasFailures);
         Assert.Contains(result.RuleResult.Issues, issue => issue.RuleId == "ejector-candidates.low-support.surface-support");
+        Assert.Contains(result.RuleResult.Issues, issue => issue.RuleId == "ejector-candidates.none-accepted");
         Assert.True(result.RuleResult.RequiresEngineerReview);
     }
 
