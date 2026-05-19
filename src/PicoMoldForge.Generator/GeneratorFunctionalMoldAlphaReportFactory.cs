@@ -11,6 +11,7 @@ using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.Undercuts;
 using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Exports;
+using PicoMoldForge.PicoGK.Analysis;
 using CorePartingAxis = PicoMoldForge.Core.Parting.PartingAxis;
 using SeparationPartingAxis = PicoMoldForge.Core.Engineering.Separation.PartingAxis;
 
@@ -99,7 +100,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         return new FunctionalMoldAlphaReport(
             Separation: separationResult.Summary,
             Shutoff: shutoffSummary,
-            DraftGeometry: CreateDraftGeometrySummary(partAnalysis),
+            DraftGeometry: CreateDraftGeometrySummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             Warnings: warnings,
             WallThickness: CreateWallThicknessSummary(input, dfamReport),
             UndercutRisk: CreateUndercutRiskSummary(partAnalysis),
@@ -109,20 +110,24 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan));
     }
 
-    private static DraftBasicGeometryAnalysisSummary CreateDraftGeometrySummary(PartAnalysisReport partAnalysis)
+    private static DraftBasicGeometryAnalysisSummary CreateDraftGeometrySummary(
+        string inputPath,
+        PartAnalysisReport partAnalysis,
+        decimal voxelResolutionMm)
     {
-        var faceCount = Math.Max(partAnalysis.TriangleCount, 1);
-        var riskCount = partAnalysis.Warnings.Any(warning => warning.Code == "UNDERCUT_HEURISTIC_RISK") ? 1 : 0;
+        if (partAnalysis.PartingPlane is null)
+        {
+            throw new InvalidOperationException("Part analysis must include a parting plane before draft geometry analysis.");
+        }
 
-        return new DraftBasicGeometryAnalysisSummary(
-            FaceCount: faceCount,
-            PositiveDraftCount: Math.Max(0, faceCount - riskCount),
-            LowDraftCount: riskCount,
-            ZeroDraftCount: 0,
-            NegativeDraftCount: 0,
-            InvalidNormalCount: 0,
-            RiskySurfaceAreaMm2: riskCount == 0 ? 0m : Math.Max(1m, Convert.ToDecimal(partAnalysis.VoxelizedVolumeCubicMm) / 100m),
-            MinimumObservedDraftDeg: riskCount == 0 ? 1m : 0.5m);
+        var analyzer = new PicoDraftGeometryAnalyzer();
+        var result = analyzer.AnalyzeBinaryStl(
+            inputPath,
+            partAnalysis.PartingPlane.OpeningDirection,
+            minimumRequiredDraftDeg: 1.0m,
+            voxelSizeMm: Convert.ToSingle(voxelResolutionMm));
+
+        return result.Summary;
     }
 
     private static VoxelWallThicknessAnalysisSummary CreateWallThicknessSummary(

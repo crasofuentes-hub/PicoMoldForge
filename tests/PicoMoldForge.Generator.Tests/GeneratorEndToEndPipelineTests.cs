@@ -55,6 +55,11 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.True(alpha.GetProperty("IsAlphaComplete").GetBoolean());
             Assert.True(alpha.GetProperty("OverallReadinessScore").GetDecimal() >= 0m);
             Assert.True(alpha.GetProperty("Separation").GetProperty("QualityScore").GetDecimal() >= 0m);
+            var draftGeometry = alpha.GetProperty("DraftGeometry");
+
+            Assert.Equal(12, draftGeometry.GetProperty("FaceCount").GetInt32());
+            Assert.True(draftGeometry.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
+            Assert.True(draftGeometry.GetProperty("MinimumObservedDraftDeg").GetDecimal() >= 0m);
             var partingPlane = alpha.GetProperty("PartingPlane");
 
             Assert.True(partingPlane.GetProperty("QualityScore").GetDecimal() >= 0m);
