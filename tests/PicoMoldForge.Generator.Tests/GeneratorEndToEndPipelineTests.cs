@@ -60,6 +60,18 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(12, draftGeometry.GetProperty("FaceCount").GetInt32());
             Assert.True(draftGeometry.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
             Assert.True(draftGeometry.GetProperty("MinimumObservedDraftDeg").GetDecimal() >= 0m);
+            var undercutRisk = alpha.GetProperty("UndercutRisk");
+
+            Assert.Equal(12, undercutRisk.GetProperty("FaceCount").GetInt32());
+            Assert.True(undercutRisk.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
+            Assert.True(undercutRisk.GetProperty("MaximumTrapDepthMm").GetDecimal() >= 0m);
+            Assert.True(
+                undercutRisk.GetProperty("ClearPullCount").GetInt32() +
+                undercutRisk.GetProperty("LowPullClearanceCount").GetInt32() +
+                undercutRisk.GetProperty("SideActionCandidateCount").GetInt32() +
+                undercutRisk.GetProperty("UndercutCount").GetInt32() +
+                undercutRisk.GetProperty("InvalidNormalCount").GetInt32() ==
+                undercutRisk.GetProperty("FaceCount").GetInt32());
             var partingPlane = alpha.GetProperty("PartingPlane");
 
             Assert.True(partingPlane.GetProperty("QualityScore").GetDecimal() >= 0m);

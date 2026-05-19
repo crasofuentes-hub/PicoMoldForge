@@ -77,7 +77,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         {
             "FunctionalMoldAlphaReport is generated from the real generator pipeline, configuration, part analysis, cooling plan, DfAM report, and generated artifact assumptions.",
             "Gate/runner/sprue and ejector summaries are preliminary generator-derived planning metrics until their geometry is emitted as dedicated artifacts.",
-            "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series."
+            "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series.",
+            "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer."
         };
 
         warnings.Add(
@@ -103,7 +104,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             DraftGeometry: CreateDraftGeometrySummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             Warnings: warnings,
             WallThickness: CreateWallThicknessSummary(input, dfamReport),
-            UndercutRisk: CreateUndercutRiskSummary(partAnalysis),
+            UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             CoolingChannels: CreateCoolingSummary(coolingPlan),
             GateRunnerSprue: CreateGateRunnerSprueSummary(),
             EjectorCandidates: CreateEjectorSummary(input),
@@ -150,20 +151,38 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             RiskySurfaceAreaMm2: riskyCount == 0 ? 0m : riskyCount);
     }
 
-    private static UndercutRiskAnalysisSummary CreateUndercutRiskSummary(PartAnalysisReport partAnalysis)
+    private static UndercutRiskAnalysisSummary CreateUndercutRiskSummary(
+        string inputPath,
+        PartAnalysisReport partAnalysis,
+        decimal voxelResolutionMm)
     {
-        var faceCount = Math.Max(partAnalysis.TriangleCount, 1);
-        var undercutRiskCount = partAnalysis.Warnings.Any(warning => warning.Code == "UNDERCUT_HEURISTIC_RISK") ? 1 : 0;
+        if (partAnalysis.PartingPlane is null)
+        {
+            throw new InvalidOperationException("Part analysis must include a parting plane before undercut risk analysis.");
+        }
+
+        var analyzer = new PicoUndercutHeuristicAnalyzer();
+        var result = analyzer.AnalyzeBinaryStl(
+            inputPath,
+            partAnalysis.PartingPlane.OpeningDirection,
+            voxelSizeMm: Convert.ToSingle(voxelResolutionMm));
+
+        var faceCount = Math.Max(result.TotalTriangleCount, 1);
+        var sideActionCandidateCount = Math.Max(0, result.OpposingNormalTriangleCount);
+        var clearPullCount = Math.Max(0, faceCount - sideActionCandidateCount);
+        var riskySurfaceAreaMm2 = sideActionCandidateCount == 0
+            ? 0m
+            : Math.Max(1m, Convert.ToDecimal(partAnalysis.VoxelizedVolumeCubicMm) * Convert.ToDecimal(result.OpposingNormalRatio));
 
         return new UndercutRiskAnalysisSummary(
             FaceCount: faceCount,
-            ClearPullCount: Math.Max(0, faceCount - undercutRiskCount),
+            ClearPullCount: clearPullCount,
             LowPullClearanceCount: 0,
-            SideActionCandidateCount: undercutRiskCount,
+            SideActionCandidateCount: sideActionCandidateCount,
             UndercutCount: 0,
             InvalidNormalCount: 0,
-            RiskySurfaceAreaMm2: undercutRiskCount == 0 ? 0m : Math.Max(1m, Convert.ToDecimal(partAnalysis.VoxelizedVolumeCubicMm) / 100m),
-            MaximumTrapDepthMm: undercutRiskCount == 0 ? 0m : 1m);
+            RiskySurfaceAreaMm2: riskySurfaceAreaMm2,
+            MaximumTrapDepthMm: sideActionCandidateCount == 0 ? 0m : 1m);
     }
 
     private static CoolingChannelSubtractionSummary CreateCoolingSummary(CoolingChannelPlan coolingPlan)
