@@ -78,7 +78,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "FunctionalMoldAlphaReport is generated from the real generator pipeline, configuration, part analysis, cooling plan, DfAM report, and generated artifact assumptions.",
             "Gate/runner/sprue and ejector summaries are preliminary generator-derived planning metrics until their geometry is emitted as dedicated artifacts.",
             "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series.",
-            "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer."
+            "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer.",
+            "Wall thickness summary uses VoxelWallThicknessAnalyzer with generator-derived DfAM/config proxy samples; it is not yet true mesh/voxel thickness extraction."
         };
 
         warnings.Add(
@@ -136,19 +137,60 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         GeneratorPipelineInput input,
         DfAMReport dfamReport)
     {
-        var sampleCount = Math.Max(dfamReport.Checks.Count, 1);
-        var riskyCount = dfamReport.Checks.Count(check => !check.IsPassed);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(dfamReport);
 
-        return new VoxelWallThicknessAnalysisSummary(
-            SampleCount: sampleCount,
-            NominalCount: Math.Max(0, sampleCount - riskyCount),
-            ThinCount: riskyCount,
-            ThickCount: 0,
-            AbruptChangeCount: 0,
-            InvalidCount: 0,
-            MinimumObservedThicknessMm: Math.Max(0m, input.DfAM.MinimumWallThicknessMm),
-            MaximumObservedThicknessMm: Math.Max(input.DfAM.MinimumWallThicknessMm, input.DfAM.RecommendedMinimumWallThicknessMm),
-            RiskySurfaceAreaMm2: riskyCount == 0 ? 0m : riskyCount);
+        var minimumAllowedMm = Math.Min(
+            input.DfAM.MinimumWallThicknessMm,
+            input.DfAM.RecommendedMinimumWallThicknessMm);
+
+        var nominalThicknessMm = Math.Max(
+            input.DfAM.MinimumWallThicknessMm,
+            input.DfAM.RecommendedMinimumWallThicknessMm);
+
+        var maximumAllowedMm = Math.Max(
+            nominalThicknessMm * 3m,
+            nominalThicknessMm);
+
+        var representativeAreaMm2 = Math.Max(
+            1m,
+            (input.MoldSystem.PartSizeXmm * input.MoldSystem.PartSizeYmm) +
+            (input.MoldSystem.PartSizeXmm * input.MoldSystem.PartSizeZmm) +
+            (input.MoldSystem.PartSizeYmm * input.MoldSystem.PartSizeZmm));
+
+        var riskyDfamCheckCount = dfamReport.Checks.Count(check => !check.IsPassed);
+
+        var samples = new[]
+        {
+            new VoxelWallThicknessSample(
+                RegionId: "generator-dfam-minimum-wall-proxy",
+                ThicknessMm: input.DfAM.MinimumWallThicknessMm,
+                NominalThicknessMm: nominalThicknessMm,
+                SurfaceAreaMm2: representativeAreaMm2),
+
+            new VoxelWallThicknessSample(
+                RegionId: "generator-dfam-recommended-wall-proxy",
+                ThicknessMm: input.DfAM.RecommendedMinimumWallThicknessMm,
+                NominalThicknessMm: nominalThicknessMm,
+                SurfaceAreaMm2: representativeAreaMm2),
+
+            new VoxelWallThicknessSample(
+                RegionId: "generator-part-z-envelope-proxy",
+                ThicknessMm: Math.Max(minimumAllowedMm, Math.Min(input.MoldSystem.PartSizeZmm, nominalThicknessMm)),
+                NominalThicknessMm: nominalThicknessMm,
+                SurfaceAreaMm2: representativeAreaMm2,
+                IsCriticalToQuality: riskyDfamCheckCount > 0)
+        };
+
+        var analyzer = new VoxelWallThicknessAnalyzer();
+
+        var result = analyzer.Analyze(new VoxelWallThicknessAnalysisInput(
+            MinimumThicknessMm: minimumAllowedMm,
+            MaximumThicknessMm: maximumAllowedMm,
+            AbruptChangeWarningRatio: 0.50m,
+            Samples: samples));
+
+        return result.Summary;
     }
 
     private static UndercutRiskAnalysisSummary CreateUndercutRiskSummary(
