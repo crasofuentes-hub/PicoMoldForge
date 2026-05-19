@@ -79,7 +79,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "Gate/runner/sprue and ejector summaries are preliminary generator-derived planning metrics until their geometry is emitted as dedicated artifacts.",
             "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series.",
             "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer.",
-            "Wall thickness summary uses VoxelWallThicknessAnalyzer with generator-derived DfAM/config proxy samples; it is not yet true mesh/voxel thickness extraction."
+            "Wall thickness summary uses VoxelWallThicknessAnalyzer with generator-derived DfAM/config proxy samples; it is not yet true mesh/voxel thickness extraction.",
+            "Cooling summary is routed through CoolingChannelSubtractor using CoolingChannelPlan segments, mold bounds, and configured minimum clearance."
         };
 
         warnings.Add(
@@ -106,7 +107,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             Warnings: warnings,
             WallThickness: CreateWallThicknessSummary(input, dfamReport),
             UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
-            CoolingChannels: CreateCoolingSummary(coolingPlan),
+            CoolingChannels: CreateCoolingSummary(input, coolingPlan),
             GateRunnerSprue: CreateGateRunnerSprueSummary(),
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
@@ -227,16 +228,46 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             MaximumTrapDepthMm: sideActionCandidateCount == 0 ? 0m : 1m);
     }
 
-    private static CoolingChannelSubtractionSummary CreateCoolingSummary(CoolingChannelPlan coolingPlan)
+    private static CoolingChannelSubtractionSummary CreateCoolingSummary(
+        GeneratorPipelineInput input,
+        CoolingChannelPlan coolingPlan)
     {
-        var channelCount = coolingPlan.Segments.Count;
-        var blockedCount = coolingPlan.IsSuccessful ? 0 : channelCount;
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(coolingPlan);
+        ArgumentNullException.ThrowIfNull(coolingPlan.Segments);
 
-        return new CoolingChannelSubtractionSummary(
-            ChannelCount: channelCount,
-            SubtractableChannelCount: Math.Max(0, channelCount - blockedCount),
-            BlockedChannelCount: blockedCount,
-            TotalEstimatedRemovedVolumeMm3: coolingPlan.Segments.Sum(EstimateCoolingChannelVolume));
+        var channels = coolingPlan.Segments
+            .Select(segment => new PicoMoldForge.Core.Engineering.CoolingGeometry.CoolingChannelSegment(
+                ChannelId: segment.Id,
+                Start: new CoolingChannelPoint(
+                    segment.StartXmm,
+                    segment.StartYmm,
+                    segment.StartZmm),
+                End: new CoolingChannelPoint(
+                    segment.EndXmm,
+                    segment.EndYmm,
+                    segment.EndZmm),
+                DiameterMm: segment.DiameterMm,
+                MinimumCavityClearanceMm: input.Cooling.MinimumClearanceMm,
+                MinimumMoldEdgeClearanceMm: input.Cooling.MinimumClearanceMm))
+            .ToArray();
+
+        var subtractor = new CoolingChannelSubtractor();
+
+        var result = subtractor.PlanSubtraction(new CoolingChannelSubtractionInput(
+            MoldBounds: new CoolingMoldBounds(
+                input.BooleanMoldBlockBounds.MinXmm,
+                input.BooleanMoldBlockBounds.MinYmm,
+                input.BooleanMoldBlockBounds.MinZmm,
+                input.BooleanMoldBlockBounds.MaxXmm,
+                input.BooleanMoldBlockBounds.MaxYmm,
+                input.BooleanMoldBlockBounds.MaxZmm),
+            Channels: channels,
+            RequiredCavityClearanceMm: input.Cooling.MinimumClearanceMm,
+            RequiredMoldEdgeClearanceMm: input.Cooling.MinimumClearanceMm,
+            HasEngineerOverride: !coolingPlan.IsSuccessful));
+
+        return result.Summary;
     }
 
     private static GateRunnerSprueGenerationSummary CreateGateRunnerSprueSummary()
