@@ -107,7 +107,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             CoolingChannels: CreateCoolingSummary(coolingPlan),
             GateRunnerSprue: CreateGateRunnerSprueSummary(),
             EjectorCandidates: CreateEjectorSummary(input),
-            ClearanceMatrix: CreateClearanceSummary(input, coolingPlan));
+            ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
+            PartingPlane: partingPlaneScoring.BestScore);
     }
 
     private static DraftBasicGeometryAnalysisSummary CreateDraftGeometrySummary(
