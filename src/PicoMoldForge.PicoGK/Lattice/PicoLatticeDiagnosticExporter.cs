@@ -64,9 +64,9 @@ public sealed class PicoLatticeDiagnosticExporter
                 var radius = Convert.ToSingle(beam.BeamRadiusMm);
 
                 lattice.AddBeam(
-                    ref start,
+                    in start,
                     radius,
-                    ref end,
+                    in end,
                     radius,
                     bRoundCap: true);
             }

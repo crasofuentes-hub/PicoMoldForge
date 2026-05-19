@@ -97,9 +97,9 @@ public sealed class PicoMoldSystemDiagnosticExporter
                 voxelSizeMm * 0.75f);
 
             lattice.AddBeam(
-                ref start,
+                in start,
                 radius,
-                ref end,
+                in end,
                 radius,
                 bRoundCap: true);
         }
@@ -123,9 +123,9 @@ public sealed class PicoMoldSystemDiagnosticExporter
             var radius = Math.Max(rawRadius, voxelSizeMm * 0.75f);
 
             lattice.AddBeam(
-                ref start,
+                in start,
                 radius,
-                ref end,
+                in end,
                 radius,
                 bRoundCap: true);
         }
@@ -191,9 +191,9 @@ public sealed class PicoMoldSystemDiagnosticExporter
         var end = new Vector3(endX, endY, endZ);
 
         lattice.AddBeam(
-            ref start,
+            in start,
             radius,
-            ref end,
+            in end,
             radius,
             bRoundCap: true);
     }

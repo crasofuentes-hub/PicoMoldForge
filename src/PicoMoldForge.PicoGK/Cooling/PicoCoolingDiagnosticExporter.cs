@@ -64,9 +64,9 @@ public sealed class PicoCoolingDiagnosticExporter
                 var radius = Convert.ToSingle(segment.DiameterMm / 2.0m);
 
                 lattice.AddBeam(
-                    ref start,
+                    in start,
                     radius,
-                    ref end,
+                    in end,
                     radius,
                     bRoundCap: true);
             }
