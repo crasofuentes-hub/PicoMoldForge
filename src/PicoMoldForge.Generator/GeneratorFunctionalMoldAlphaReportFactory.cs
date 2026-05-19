@@ -23,15 +23,12 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         GeneratorPipelineInput input,
         PartAnalysisReport partAnalysis,
         CoolingChannelPlan coolingPlan,
-        DfAMReport dfamReport,
-        GateRunnerSprueGenerationResult gateRunnerSpruePlan)
+        DfAMReport dfamReport)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(partAnalysis);
         ArgumentNullException.ThrowIfNull(coolingPlan);
         ArgumentNullException.ThrowIfNull(dfamReport);
-        ArgumentNullException.ThrowIfNull(gateRunnerSpruePlan);
-
         if (partAnalysis.PartingPlane is null)
         {
             throw new InvalidOperationException("Part analysis must include a parting plane before FunctionalMoldAlphaReport generation.");
@@ -110,7 +107,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             WallThickness: CreateWallThicknessSummary(input, dfamReport),
             UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             CoolingChannels: CreateCoolingSummary(input, coolingPlan),
-            GateRunnerSprue: gateRunnerSpruePlan.Summary,
+            GateRunnerSprue: CreateGateRunnerSprueSummary(input),
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
             PartingPlane: partingPlaneScoring.BestScore);
@@ -142,8 +139,6 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(dfamReport);
-        ArgumentNullException.ThrowIfNull(gateRunnerSpruePlan);
-
         var minimumAllowedMm = Math.Min(
             input.DfAM.MinimumWallThicknessMm,
             input.DfAM.RecommendedMinimumWallThicknessMm);
@@ -273,20 +268,14 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         return result.Summary;
     }
 
-    private static GateRunnerSprueGenerationSummary CreateGateRunnerSprueSummary()
+    private static GateRunnerSprueGenerationSummary CreateGateRunnerSprueSummary(GeneratorPipelineInput input)
     {
-        return new GateRunnerSprueGenerationSummary(
-            SegmentCount: 0,
-            SprueCount: 0,
-            RunnerCount: 0,
-            GateCount: 0,
-            GeneratableSegmentCount: 0,
-            BlockedSegmentCount: 0,
-            TotalFlowLengthMm: 0m,
-            TotalEstimatedVolumeMm3: 0m);
-    }
+        var gateRunnerSprueInput = GeneratorGateRunnerSpruePlanFactory.CreateInput(input);
+        var gateRunnerSpruePlan = GeneratorGateRunnerSpruePlanFactory.Plan(gateRunnerSprueInput);
 
-    private static EjectorCandidateGenerationSummary CreateEjectorSummary(GeneratorPipelineInput input)
+        return gateRunnerSpruePlan.Summary;
+    }
+private static EjectorCandidateGenerationSummary CreateEjectorSummary(GeneratorPipelineInput input)
     {
         var count = Math.Max(0, input.MoldSystem.EjectorPinCount);
         var pinArea = count * CircleArea(input.MoldSystem.EjectorPinDiameterMm);

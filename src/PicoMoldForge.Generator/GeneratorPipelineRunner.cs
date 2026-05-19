@@ -135,8 +135,7 @@ public sealed class GeneratorPipelineRunner
             input,
             partAnalysis,
             coolingPlan,
-            dfamReport,
-            gateRunnerSpruePlan);
+            dfamReport);
         var finalReport = reportBuilder.Build(
             projectName: input.Config.ProjectName,
             manifest: manifest,
