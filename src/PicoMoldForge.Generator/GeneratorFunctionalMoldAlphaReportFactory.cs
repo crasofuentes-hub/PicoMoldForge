@@ -50,8 +50,6 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             Candidates: partingPlaneScorer.GenerateDefaultCandidates(moldBounds, partBounds),
             HasShutoffStrategy: true));
 
-        warnings.Add(
-            $"Parting plane scorer selected {partingPlaneScoring.BestScore.Candidate.Axis} at {partingPlaneScoring.BestScore.Candidate.OffsetMm} mm with quality score {partingPlaneScoring.BestScore.QualityScore}.");
         var separationResult = new MoldSeparationEngine().Split(new MoldSeparationEngineInput(
             MoldBlockBounds: moldBounds,
             PartBounds: partBounds,
@@ -81,6 +79,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series."
         };
 
+        warnings.Add(
+            $"Parting plane scorer selected {partingPlaneScoring.BestScore.Candidate.Axis} at {partingPlaneScoring.BestScore.Candidate.OffsetMm} mm with quality score {partingPlaneScoring.BestScore.QualityScore}.");
         foreach (var warning in partAnalysis.Warnings)
         {
             warnings.Add($"PartAnalysis warning: {warning.Code} - {warning.Message}");
