@@ -23,12 +23,14 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         GeneratorPipelineInput input,
         PartAnalysisReport partAnalysis,
         CoolingChannelPlan coolingPlan,
-        DfAMReport dfamReport)
+        DfAMReport dfamReport,
+        GateRunnerSprueGenerationResult gateRunnerSpruePlan)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(partAnalysis);
         ArgumentNullException.ThrowIfNull(coolingPlan);
         ArgumentNullException.ThrowIfNull(dfamReport);
+        ArgumentNullException.ThrowIfNull(gateRunnerSpruePlan);
 
         if (partAnalysis.PartingPlane is null)
         {
@@ -108,7 +110,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             WallThickness: CreateWallThicknessSummary(input, dfamReport),
             UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             CoolingChannels: CreateCoolingSummary(input, coolingPlan),
-            GateRunnerSprue: CreateGateRunnerSprueSummary(),
+            GateRunnerSprue: gateRunnerSpruePlan.Summary,
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
             PartingPlane: partingPlaneScoring.BestScore);
@@ -140,6 +142,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(dfamReport);
+        ArgumentNullException.ThrowIfNull(gateRunnerSpruePlan);
 
         var minimumAllowedMm = Math.Min(
             input.DfAM.MinimumWallThicknessMm,

@@ -11,6 +11,7 @@ using PicoMoldForge.PicoGK.BooleanGeometry;
 using PicoMoldForge.PicoGK.CavityCore;
 using PicoMoldForge.PicoGK.Cooling;
 using PicoMoldForge.PicoGK.Exports;
+using PicoMoldForge.PicoGK.GateSystem;
 using PicoMoldForge.PicoGK.Lattice;
 using PicoMoldForge.PicoGK.MoldSystems;
 
@@ -34,6 +35,7 @@ public sealed class GeneratorPipelineRunner
         var coolingDiagnosticPath = Path.Combine(input.ResolvedOutputDirectory, "CoolingDiagnostic.stl");
         var latticeDiagnosticPath = Path.Combine(input.ResolvedOutputDirectory, "LatticeDiagnostic.stl");
         var moldSystemDiagnosticPath = Path.Combine(input.ResolvedOutputDirectory, "MoldSystemDiagnostic.stl");
+        var gateRunnerSprueDiagnosticPath = Path.Combine(input.ResolvedOutputDirectory, "GateRunnerSprueDiagnostic.stl");
         var finalReportPath = Path.Combine(input.ResolvedOutputDirectory, "FinalProjectReport.json");
 
         var warnings = new List<string>
@@ -110,6 +112,14 @@ public sealed class GeneratorPipelineRunner
             moldSystemPlan,
             moldSystemDiagnosticPath,
             voxelSizeMm);
+        var gateRunnerSprueInput = GeneratorGateRunnerSpruePlanFactory.CreateInput(input);
+        var gateRunnerSpruePlan = GeneratorGateRunnerSpruePlanFactory.Plan(gateRunnerSprueInput);
+
+        var gateRunnerSprueExporter = new PicoGateRunnerSprueDiagnosticExporter();
+        gateRunnerSprueExporter.ExportGateRunnerSprueDiagnostic(
+            gateRunnerSprueInput,
+            gateRunnerSprueDiagnosticPath,
+            voxelSizeMm);
 
         var dfamAnalyzer = new PreliminaryDfAMAnalyzer();
         var dfamReport = dfamAnalyzer.Analyze(CreateDfAMSnapshot(
@@ -125,7 +135,8 @@ public sealed class GeneratorPipelineRunner
             input,
             partAnalysis,
             coolingPlan,
-            dfamReport);
+            dfamReport,
+            gateRunnerSpruePlan);
         var finalReport = reportBuilder.Build(
             projectName: input.Config.ProjectName,
             manifest: manifest,

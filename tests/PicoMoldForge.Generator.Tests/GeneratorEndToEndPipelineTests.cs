@@ -43,6 +43,7 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.True(File.Exists(Path.Combine(outputDirectory, "CoolingDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "LatticeDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "MoldSystemDiagnostic.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "GateRunnerSprueDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "FinalProjectReport.json")));
 
             using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(outputDirectory, "FinalProjectReport.json")));
@@ -91,6 +92,26 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, coolingChannels.GetProperty("BlockedChannelCount").GetInt32());
             Assert.True(coolingChannels.GetProperty("TotalEstimatedRemovedVolumeMm3").GetDecimal() > 0m);
             Assert.True(alpha.GetProperty("EjectorCandidates").GetProperty("CandidateCount").GetInt32() > 0);
+            var gateRunnerSprue = alpha.GetProperty("GateRunnerSprue");
+
+            Assert.Equal(3, gateRunnerSprue.GetProperty("SegmentCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("SprueCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("RunnerCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("GateCount").GetInt32());
+            Assert.Equal(3, gateRunnerSprue.GetProperty("GeneratableSegmentCount").GetInt32());
+            Assert.Equal(0, gateRunnerSprue.GetProperty("BlockedSegmentCount").GetInt32());
+            Assert.True(gateRunnerSprue.GetProperty("TotalFlowLengthMm").GetDecimal() > 0m);
+            Assert.True(gateRunnerSprue.GetProperty("TotalEstimatedVolumeMm3").GetDecimal() > 0m);
+            var gateRunnerSprue = alpha.GetProperty("GateRunnerSprue");
+
+            Assert.Equal(3, gateRunnerSprue.GetProperty("SegmentCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("SprueCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("RunnerCount").GetInt32());
+            Assert.Equal(1, gateRunnerSprue.GetProperty("GateCount").GetInt32());
+            Assert.Equal(3, gateRunnerSprue.GetProperty("GeneratableSegmentCount").GetInt32());
+            Assert.Equal(0, gateRunnerSprue.GetProperty("BlockedSegmentCount").GetInt32());
+            Assert.True(gateRunnerSprue.GetProperty("TotalFlowLengthMm").GetDecimal() > 0m);
+            Assert.True(gateRunnerSprue.GetProperty("TotalEstimatedVolumeMm3").GetDecimal() > 0m);
         }
         finally
         {
