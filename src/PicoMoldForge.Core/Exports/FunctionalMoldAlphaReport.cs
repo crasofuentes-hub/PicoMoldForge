@@ -19,7 +19,8 @@ public sealed record FunctionalMoldAlphaReport(
     CoolingChannelSubtractionSummary? CoolingChannels = null,
     GateRunnerSprueGenerationSummary? GateRunnerSprue = null,
     EjectorCandidateGenerationSummary? EjectorCandidates = null,
-    ClearanceCollisionMatrixSummary? ClearanceMatrix = null)
+    ClearanceCollisionMatrixSummary? ClearanceMatrix = null,
+    PartingPlaneScore? PartingPlane = null)
 {
     public IReadOnlyList<string> Validate()
     {
@@ -33,7 +34,8 @@ public sealed record FunctionalMoldAlphaReport(
             CoolingChannels is null &&
             GateRunnerSprue is null &&
             EjectorCandidates is null &&
-            ClearanceMatrix is null)
+            ClearanceMatrix is null &&
+            PartingPlane is null)
         {
             errors.Add("At least one Functional Mold Alpha metric group is required.");
         }
@@ -52,6 +54,7 @@ public sealed record FunctionalMoldAlphaReport(
         ValidateGateRunnerSprue(errors);
         ValidateEjectorCandidates(errors);
         ValidateClearanceMatrix(errors);
+        ValidatePartingPlane(errors);
 
         return errors;
     }
@@ -177,6 +180,28 @@ public sealed record FunctionalMoldAlphaReport(
         return Math.Round(score, 6);
     }
 
+    private void ValidatePartingPlane(List<string> errors)
+    {
+        if (PartingPlane is null)
+        {
+            return;
+        }
+
+        if (PartingPlane.QualityScore < 0m || PartingPlane.QualityScore > 1m)
+        {
+            errors.Add("PartingPlane QualityScore must be between 0 and 1.");
+        }
+
+        if (PartingPlane.NormalizedPosition < 0m || PartingPlane.NormalizedPosition > 1m)
+        {
+            errors.Add("PartingPlane NormalizedPosition must be between 0 and 1.");
+        }
+
+        if (PartingPlane.BalanceRatio < 0m || PartingPlane.BalanceRatio > 1m)
+        {
+            errors.Add("PartingPlane BalanceRatio must be between 0 and 1.");
+        }
+    }
     private void ValidateSeparation(List<string> errors)
     {
         if (Separation is null)

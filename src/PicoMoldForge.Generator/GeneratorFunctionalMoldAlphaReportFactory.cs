@@ -42,6 +42,16 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             moldBounds,
             splitAxis);
 
+        var partingPlaneScorer = new PartingPlaneScorer();
+        var partingPlaneScoring = partingPlaneScorer.Score(new PartingPlaneScoringInput(
+            MoldBlockBounds: moldBounds,
+            PartBounds: partBounds,
+            VoxelResolutionMm: input.Config.VoxelResolutionMm,
+            Candidates: partingPlaneScorer.GenerateDefaultCandidates(moldBounds, partBounds),
+            HasShutoffStrategy: true));
+
+        warnings.Add(
+            $"Parting plane scorer selected {partingPlaneScoring.BestScore.Candidate.Axis} at {partingPlaneScoring.BestScore.Candidate.OffsetMm} mm with quality score {partingPlaneScoring.BestScore.QualityScore}.");
         var separationResult = new MoldSeparationEngine().Split(new MoldSeparationEngineInput(
             MoldBlockBounds: moldBounds,
             PartBounds: partBounds,
