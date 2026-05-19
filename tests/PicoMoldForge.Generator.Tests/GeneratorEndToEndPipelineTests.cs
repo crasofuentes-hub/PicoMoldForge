@@ -102,16 +102,6 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, gateRunnerSprue.GetProperty("BlockedSegmentCount").GetInt32());
             Assert.True(gateRunnerSprue.GetProperty("TotalFlowLengthMm").GetDecimal() > 0m);
             Assert.True(gateRunnerSprue.GetProperty("TotalEstimatedVolumeMm3").GetDecimal() > 0m);
-            var gateRunnerSprue = alpha.GetProperty("GateRunnerSprue");
-
-            Assert.Equal(3, gateRunnerSprue.GetProperty("SegmentCount").GetInt32());
-            Assert.Equal(1, gateRunnerSprue.GetProperty("SprueCount").GetInt32());
-            Assert.Equal(1, gateRunnerSprue.GetProperty("RunnerCount").GetInt32());
-            Assert.Equal(1, gateRunnerSprue.GetProperty("GateCount").GetInt32());
-            Assert.Equal(3, gateRunnerSprue.GetProperty("GeneratableSegmentCount").GetInt32());
-            Assert.Equal(0, gateRunnerSprue.GetProperty("BlockedSegmentCount").GetInt32());
-            Assert.True(gateRunnerSprue.GetProperty("TotalFlowLengthMm").GetDecimal() > 0m);
-            Assert.True(gateRunnerSprue.GetProperty("TotalEstimatedVolumeMm3").GetDecimal() > 0m);
         }
         finally
         {
