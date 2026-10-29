@@ -251,5 +251,7 @@ The PicoGK native tests are opt-in so the default `dotnet test` never depends on
   crowning or internal gears.
 - Simplification runs on one thread: 5 to 14 s per sample part on the Windows machine of the first
   run, about 1.5 minutes for all five on a 2-core Linux machine.
-- `picogk-view` (the native PicoGK window) has not been exercised yet; the headless PicoGK rendering
-  and the cross-check have (first Windows run above).
+- `picogk-view` (the native PicoGK window) was run on Windows on 29 Oct 2026 with the helical gear:
+  PicoGK's log closed normally and the command exited with 0 after the window was closed. Like the
+  headless rendering and the cross-check (first Windows run above), it is exercised by hand, not by
+  the automated tests.
