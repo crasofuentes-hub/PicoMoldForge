@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>PicoMoldForge.Parts</RootNamespace>
+    <AssemblyName>PicoMoldForge.Parts.Core</AssemblyName>
+    <Description>PicoMoldForge Parts: parametric CAD geometry engine (signed distance fields, ISO 841 axes, sweeps, gears, pistons, blocks) with a reference mesher. No PicoGK dependency.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PicoMoldForge.Parts.Core.Tests" />
+  </ItemGroup>
+
+</Project>

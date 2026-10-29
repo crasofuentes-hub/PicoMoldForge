@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "picomoldforge.part-recipe.v1",
+  "name": "piston",
+  "title": "Piston 56 mm (simplificado)",
+  "description": "Simplified piston: body and cavity turned about C, pin bosses along X mirrored by a C pattern, pin bore drilled along X, three ring grooves turned about C, skirt reliefs dropped along Z.",
+  "units": "mm",
+  "axisConvention": "ISO-841",
+  "template": {
+    "type": "piston",
+    "boreDiameter": 56.0,
+    "clearance": 0.05,
+    "height": 52.0,
+    "compressionHeight": 30.0,
+    "pinDiameter": 14.0,
+    "pinBossDiameter": 22.0,
+    "pinBossGap": 22.0,
+    "crownThickness": 6.0,
+    "skirtWall": 3.5,
+    "ringBeltWall": 6.0,
+    "topLand": 5.0,
+    "ringGrooveWidths": [1.2, 1.2, 2.5],
+    "ringLands": [3.5, 3.5],
+    "grooveDepth": 2.6,
+    "skirtReliefDepth": 1.2
+  },
+  "mesh": {
+    "resolutionMm": 0.18,
+    "decimate": true,
+    "decimateToleranceMm": 0.015
+  }
+}

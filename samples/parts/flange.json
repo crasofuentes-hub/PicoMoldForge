@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "picomoldforge.part-recipe.v1",
+  "name": "flange",
+  "title": "Brida con cubo (rasgos explicitos)",
+  "description": "Generic feature recipe (no template): every step is a profile plus a trajectory in X, Y, Z, A, B, C. Hub and flange turned about C, bore drilled along Z, six bolt holes drilled along Z in a circular C pattern, radial grease hole drilled along X.",
+  "units": "mm",
+  "axisConvention": "ISO-841",
+  "features": [
+    {
+      "id": "body",
+      "label": "Cubo y brida: media seccion que gira en C",
+      "op": "add",
+      "sweep": { "kind": "rotary", "axis": "C", "startDeg": 0, "endDeg": 360 },
+      "profile": {
+        "type": "halfSection",
+        "points": [[0, 0], [50, 0], [50, 10], [20, 10], [20, 30], [0, 30]]
+      }
+    },
+    {
+      "id": "bore",
+      "label": "Barreno central: taladro en Z",
+      "op": "subtract",
+      "sweep": { "kind": "linear", "axis": "Z", "from": 31, "to": -1 },
+      "profile": { "type": "circle", "center": [0, 0], "diameter": 20 }
+    },
+    {
+      "id": "bolt-holes",
+      "label": "Seis barrenos: taladro en Z repetido en C",
+      "op": "subtract",
+      "sweep": { "kind": "linear", "axis": "Z", "from": 11, "to": -1 },
+      "profile": { "type": "circle", "center": [0, 0], "diameter": 9 },
+      "origin": [38, 0, 0],
+      "pattern": { "type": "circular", "axis": "C", "count": 6, "startDeg": 0, "spanDeg": 360 }
+    },
+    {
+      "id": "grease-hole",
+      "label": "Barreno radial de engrase: taladro en X",
+      "op": "subtract",
+      "sweep": { "kind": "linear", "axis": "X", "from": 0, "to": 25 },
+      "profile": { "type": "circle", "center": [0, 20], "diameter": 4 }
+    }
+  ],
+  "expect": {
+    "genus": 8,
+    "boundingBox": { "min": [-50, -50, 0], "max": [50, 50, 30] },
+    "surfacePoints": [
+      { "id": "flange.bore", "description": "Barreno central de 20 mm", "point": [-10, 0, 20] },
+      { "id": "flange.bolt-hole", "description": "Barreno de 9 mm a 38 mm del eje", "point": [42.5, 0, 5] },
+      { "id": "flange.top", "description": "Cara superior de la brida a Z = 10", "point": [0, 30, 10] },
+      { "id": "flange.hub-top", "description": "Cara superior del cubo a Z = 30", "point": [0, 15, 30] },
+      { "id": "flange.grease-hole", "description": "Barreno radial de 4 mm a Z = 20", "point": [15, 0, 22] }
+    ]
+  },
+  "mesh": {
+    "resolutionMm": 0.2,
+    "decimate": true,
+    "decimateToleranceMm": 0.02
+  }
+}

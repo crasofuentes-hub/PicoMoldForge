@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<!-- artifact:begin -->
+<title>PicoMoldForge Piezas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workshop bench. 3D stage on the left with its tool rail underneath, a drawing-sheet style
+   inspection panel on the right (stacks under the stage on phones). */
+:root {
+  --bg: #e9ecef;
+  --surface: #f7f8f9;
+  --surface-2: #dde2e7;
+  --line: #c3cad2;
+  --fg: #1c2126;
+  --muted: #56606b;
+  --accent: #a8650f;
+  --accent-soft: #f0dcbd;
+  --cut: #c2412f;
+  --ok: #2f7d4f;
+  --bad: #b3261e;
+  --scene-bg: #dfe4e9;
+  --lattice-empty: #8a95a1;
+  --lattice-filled: #b8741a;
+  --solid: #c98a2e;
+  --axis-x: #d0453a;
+  --axis-y: #2f9e55;
+  --axis-z: #2f6fd6;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121519;
+    --surface: #191d22;
+    --surface-2: #232931;
+    --line: #313942;
+    --fg: #e7e9ec;
+    --muted: #9aa5b1;
+    --accent: #e8a640;
+    --accent-soft: #3a2c16;
+    --cut: #f06b55;
+    --ok: #59c184;
+    --bad: #ff7a6e;
+    --scene-bg: #15191e;
+    --lattice-empty: #4a5560;
+    --lattice-filled: #f0a93f;
+    --solid: #e19a35;
+    --axis-x: #ff6b5e;
+    --axis-y: #4fd07c;
+    --axis-z: #5c9dff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121519;
+  --surface: #191d22;
+  --surface-2: #232931;
+  --line: #313942;
+  --fg: #e7e9ec;
+  --muted: #9aa5b1;
+  --accent: #e8a640;
+  --accent-soft: #3a2c16;
+  --cut: #f06b55;
+  --ok: #59c184;
+  --bad: #ff7a6e;
+  --scene-bg: #15191e;
+  --lattice-empty: #4a5560;
+  --lattice-filled: #f0a93f;
+  --solid: #e19a35;
+  --axis-x: #ff6b5e;
+  --axis-y: #4fd07c;
+  --axis-z: #5c9dff;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  margin: 0;
+}
+* { box-sizing: border-box; }
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 12px 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 20px;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.7rem;
+  letter-spacing: 0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.brand .iso {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+nav.parts { display: flex; flex-wrap: wrap; gap: 6px; }
+nav.parts button {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+nav.parts button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--fg);
+}
+nav.parts button:focus-visible, .tools button:focus-visible, .tools select:focus-visible, .tools input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 920px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+}
+.stage-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stage {
+  position: relative;
+  height: min(68vh, 720px);
+  min-height: 320px;
+  background: var(--scene-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+@media (max-width: 920px) { .stage { height: 58vh; } }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage .hud {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  pointer-events: none;
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.hud .step {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 3px 8px;
+  color: var(--fg);
+  max-width: 100%;
+}
+.hud .step b { color: var(--accent); font-weight: 500; }
+.message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.tools .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tools .label {
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.tools button, .tools select {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.tools button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+.tools label.toggle { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.tools input[type="range"] { width: 120px; accent-color: var(--accent); }
+aside.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.panel section { padding: 12px 14px; border-top: 1px solid var(--line); min-width: 0; }
+.panel section:first-child { border-top: 0; }
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+.part-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.45rem;
+  line-height: 1.15;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  font-family: var(--font-data);
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.pill.ok { color: var(--ok); }
+.pill.bad { color: var(--bad); }
+.pill.neutral { color: var(--muted); }
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+ol.steps li {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+ol.steps li.active { border-color: var(--accent); background: var(--accent-soft); }
+ol.steps li.done { color: var(--muted); }
+ol.steps .n { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); }
+ol.steps .axis { font-family: var(--font-data); font-size: 0.78rem; white-space: nowrap; }
+ol.steps .op-add { color: var(--accent); }
+ol.steps .op-subtract { color: var(--cut); }
+ol.steps .op-intersect { color: var(--axis-z); }
+dl.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; margin: 0; }
+dl.kv dt { color: var(--muted); min-width: 0; }
+dl.kv dd { margin: 0; font-family: var(--font-data); font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+ul.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+ul.checks li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+ul.checks .mark { font-family: var(--font-data); font-size: 0.72rem; font-weight: 500; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+ul.checks .mark.ok { color: var(--ok); }
+ul.checks .mark.bad { color: var(--bad); }
+ul.checks details summary { cursor: pointer; }
+ul.checks .detail { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); overflow-wrap: anywhere; margin-top: 4px; }
+.axes-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; font-family: var(--font-data); font-size: 0.8rem; }
+.axes-legend span { display: block; }
+.axes-legend .x { color: var(--axis-x); }
+.axes-legend .y { color: var(--axis-y); }
+.axes-legend .z { color: var(--axis-z); }
+.note { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; }
+a { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <h1>PicoMoldForge Piezas</h1>
+      <span class="iso">ISO 841 · X Y Z · A B C</span>
+    </div>
+    <nav class="parts" id="part-tabs" aria-label="Piezas"></nav>
+  </header>
+
+  <div class="workspace">
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <canvas id="scene" aria-label="Vista 3D de la pieza"></canvas>
+        <div class="hud"><span class="step" id="hud-step">Cargando…</span></div>
+        <div class="message" id="stage-message" hidden></div>
+      </div>
+      <div class="tools" role="toolbar" aria-label="Controles del visor">
+        <div class="group">
+          <button type="button" class="primary" id="btn-play">Pausa</button>
+          <button type="button" id="btn-restart">Reiniciar</button>
+          <button type="button" id="btn-finish">Ver sólido</button>
+        </div>
+        <div class="group">
+          <span class="label">Velocidad</span>
+          <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1" aria-label="Velocidad de la animación">
+        </div>
+        <div class="group">
+          <label class="toggle"><input type="checkbox" id="show-lattice" checked> Malla</label>
+          <label class="toggle"><input type="checkbox" id="show-profiles" checked> Perfiles</label>
+          <label class="toggle"><input type="checkbox" id="show-solid" checked> Sólido</label>
+        </div>
+        <div class="group">
+          <span class="label">Corte</span>
+          <select id="cut-axis" aria-label="Eje del corte">
+            <option value="none">Sin corte</option>
+            <option value="x">X</option>
+            <option value="y">Y</option>
+            <option value="z">Z</option>
+          </select>
+          <input type="range" id="cut-pos" min="0" max="1" step="0.001" value="0.5" aria-label="Posición del corte" disabled>
+        </div>
+        <div class="group">
+          <span class="label">Vista</span>
+          <button type="button" data-view="iso">Iso</button>
+          <button type="button" data-view="top">Planta XY</button>
+          <button type="button" data-view="front">Frente XZ</button>
+          <button type="button" data-view="side">Lateral YZ</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel" aria-live="polite">
+      <section>
+        <p class="part-title" id="part-title">—</p>
+        <div class="pills" id="part-pills"></div>
+      </section>
+      <section>
+        <h2>Construcción</h2>
+        <ol class="steps" id="steps"></ol>
+        <p class="note">Cada paso es un perfil que recorre una trayectoria en X, Y, Z, A, B o C y se suma o se resta a la pieza.</p>
+      </section>
+      <section>
+        <h2>Medidas de la malla</h2>
+        <dl class="kv" id="metrics"></dl>
+      </section>
+      <section>
+        <h2>Verificación</h2>
+        <ul class="checks" id="checks"></ul>
+      </section>
+      <section>
+        <h2>Parámetros</h2>
+        <dl class="kv" id="params"></dl>
+      </section>
+      <section>
+        <h2>Ejes</h2>
+        <div class="axes-legend">
+          <span class="x">X lineal<br>A gira sobre X</span>
+          <span class="y">Y lineal<br>B gira sobre Y</span>
+          <span class="z">Z lineal<br>C gira sobre Z</span>
+        </div>
+        <p class="note">Giros positivos por la regla de la mano derecha (ISO 841). Orientaciones combinadas: A, luego B, luego C sobre ejes fijos.</p>
+        <p class="note" id="files-note">Geometría (CAD). Fuera de alcance: trayectorias de herramienta y G-code (CAM).</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { toCreasedNormals } from "three/addons/utils/BufferGeometryUtils.js";
+
+const $ = (id) => document.getElementById(id);
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt = (value, digits = 2) => Number(value).toLocaleString("es-MX", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+function token(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888888";
+}
+
+// ---------- data ----------
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  return response.json();
+}
+
+async function fetchBuffer(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  // Hosts that only serve text receive the same bytes base64-encoded in a ".b64.txt" file.
+  if (url.endsWith(".b64.txt")) {
+    const text = (await response.text()).replace(/\s+/g, "");
+    const binary = atob(text);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+  return response.arrayBuffer();
+}
+
+function readMagic(buffer, expected) {
+  const bytes = new Uint8Array(buffer, 0, 8);
+  const magic = String.fromCharCode(...bytes);
+  if (magic !== expected) throw new Error(`Formato inesperado (${magic}), se esperaba ${expected}`);
+}
+
+function parsePreview(buffer) {
+  readMagic(buffer, "PMFMESH1");
+  const view = new DataView(buffer);
+  const vertexCount = view.getUint32(12, true);
+  const triangleCount = view.getUint32(16, true);
+  const min = [view.getFloat32(20, true), view.getFloat32(24, true), view.getFloat32(28, true)];
+  const max = [view.getFloat32(32, true), view.getFloat32(36, true), view.getFloat32(40, true)];
+  const quantized = new Uint16Array(buffer.slice(44, 44 + vertexCount * 6));
+  const indices = new Uint32Array(buffer.slice(44 + vertexCount * 6, 44 + vertexCount * 6 + triangleCount * 12));
+  const positions = new Float32Array(vertexCount * 3);
+  for (let i = 0; i < vertexCount; i++) {
+    for (let a = 0; a < 3; a++) {
+      positions[i * 3 + a] = min[a] + (quantized[i * 3 + a] / 65535) * (max[a] - min[a]);
+    }
+  }
+  return { positions, indices, min, max, triangleCount };
+}
+
+function parseLattice(buffer) {
+  readMagic(buffer, "PMFLAT01");
+  const view = new DataView(buffer);
+  const nx = view.getUint32(12, true), ny = view.getUint32(16, true), nz = view.getUint32(20, true);
+  const featureCount = view.getUint32(24, true);
+  const origin = [view.getFloat32(28, true), view.getFloat32(32, true), view.getFloat32(36, true)];
+  const step = view.getFloat32(40, true);
+  const count = nx * ny * nz;
+  const progress = [];
+  for (let f = 0; f < featureCount; f++) progress.push(new Uint8Array(buffer, 44 + f * count, count));
+  const final = new Uint8Array(buffer, 44 + featureCount * count, count);
+  return { nx, ny, nz, origin, step, count, progress, final };
+}
+
+// ---------- scene ----------
+const canvas = $("scene");
+const stage = $("stage");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.localClippingEnabled = true;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 10000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.12;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444a52, 1.1));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+keyLight.position.set(1, -1.5, 2);
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+fillLight.position.set(-1.5, 1, 0.6);
+scene.add(fillLight);
+
+const clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+let clipping = [];
+
+const state = {
+  index: null,
+  part: null,
+  playing: !reducedMotion,
+  speed: 1,
+  featureIndex: 0,
+  t: 0,
+  revealing: 0,
+  finished: false
+};
+
+let groups = {};
+
+function resize() {
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  renderer.setSize(width, height, false);
+  camera.aspect = width / Math.max(height, 1);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+function applyTheme() {
+  scene.background = new THREE.Color(token("--scene-bg"));
+  if (groups.solidMaterial) groups.solidMaterial.color.set(token("--solid"));
+  if (groups.axes) buildAxes();
+  if (groups.latticeColors) paintLattice(true);
+}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function disposeGroup(object) {
+  if (!object) return;
+  scene.remove(object);
+  object.traverse((child) => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+    }
+  });
+}
+
+function textSprite(text, color, size) {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = color;
+  ctx.font = "600 84px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 64, 68);
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true }));
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 10;
+  return sprite;
+}
+
+function buildAxes() {
+  disposeGroup(groups.axes);
+  const part = state.part;
+  if (!part) return;
+  const size = part.radius * 1.15;
+  const group = new THREE.Group();
+  const axes = [
+    { dir: new THREE.Vector3(1, 0, 0), color: token("--axis-x"), name: "X", rot: "A", u: new THREE.Vector3(0, 1, 0), v: new THREE.Vector3(0, 0, 1) },
+    { dir: new THREE.Vector3(0, 1, 0), color: token("--axis-y"), name: "Y", rot: "B", u: new THREE.Vector3(0, 0, 1), v: new THREE.Vector3(1, 0, 0) },
+    { dir: new THREE.Vector3(0, 0, 1), color: token("--axis-z"), name: "Z", rot: "C", u: new THREE.Vector3(1, 0, 0), v: new THREE.Vector3(0, 1, 0) }
+  ];
+  for (const axis of axes) {
+    const material = new THREE.LineBasicMaterial({ color: axis.color, depthTest: false, transparent: true, opacity: 0.95 });
+    const line = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), axis.dir.clone().multiplyScalar(size)]);
+    const lineObject = new THREE.Line(line, material);
+    lineObject.renderOrder = 9;
+    group.add(lineObject);
+    const label = textSprite(axis.name, axis.color, size * 0.09);
+    label.position.copy(axis.dir.clone().multiplyScalar(size * 1.07));
+    group.add(label);
+    // Rotary axis arc (right-hand rule: from U toward V) with an arrow tip.
+    const center = axis.dir.clone().multiplyScalar(size * 0.78);
+    const radius = size * 0.07;
+    const points = [];
+    for (let i = 0; i <= 40; i++) {
+      const a = (i / 40) * Math.PI * 1.5;
+      points.push(center.clone().add(axis.u.clone().multiplyScalar(Math.cos(a) * radius)).add(axis.v.clone().multiplyScalar(Math.sin(a) * radius)));
+    }
+    const end = Math.PI * 1.5;
+    const tip = points[points.length - 1];
+    const tangent = axis.u.clone().multiplyScalar(-Math.sin(end)).add(axis.v.clone().multiplyScalar(Math.cos(end)));
+    const normal = axis.u.clone().multiplyScalar(Math.cos(end)).add(axis.v.clone().multiplyScalar(Math.sin(end)));
+    const arrow = [
+      tip.clone().add(tangent.clone().multiplyScalar(-radius * 0.45)).add(normal.clone().multiplyScalar(radius * 0.3)),
+      tip,
+      tip.clone().add(tangent.clone().multiplyScalar(-radius * 0.45)).add(normal.clone().multiplyScalar(-radius * 0.3))
+    ];
+    const arcMaterial = new THREE.LineBasicMaterial({ color: axis.color, depthTest: false, transparent: true, opacity: 0.85 });
+    const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), arcMaterial);
+    const head = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arrow), arcMaterial);
+    arc.renderOrder = 9; head.renderOrder = 9;
+    group.add(arc, head);
+    const rotLabel = textSprite(axis.rot, axis.color, size * 0.075);
+    rotLabel.position.copy(center.clone().add(axis.u.clone().multiplyScalar(radius * 1.9)).add(axis.v.clone().multiplyScalar(radius * 1.2)));
+    group.add(rotLabel);
+  }
+  groups.axes = group;
+  scene.add(group);
+}
+
+// ---------- lattice ("la malla") ----------
+function buildLattice(lattice) {
+  const positions = new Float32Array(lattice.count * 3);
+  let i = 0;
+  for (let k = 0; k < lattice.nz; k++) for (let j = 0; j < lattice.ny; j++) for (let x = 0; x < lattice.nx; x++) {
+    positions[i++] = lattice.origin[0] + x * lattice.step;
+    positions[i++] = lattice.origin[1] + j * lattice.step;
+    positions[i++] = lattice.origin[2] + k * lattice.step;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const colors = new Float32Array(lattice.count * 3);
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const dot = document.createElement("canvas");
+  dot.width = 32; dot.height = 32;
+  const ctx = dot.getContext("2d");
+  ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill();
+  const material = new THREE.PointsMaterial({
+    size: lattice.step * 0.22,
+    sizeAttenuation: true,
+    vertexColors: true,
+    map: new THREE.CanvasTexture(dot),
+    alphaTest: 0.4,
+    clippingPlanes: clipping
+  });
+  const points = new THREE.Points(geometry, material);
+  groups.lattice = points;
+  groups.latticeColors = colors;
+  groups.latticeState = new Uint8Array(lattice.count);
+  scene.add(points);
+
+  // Per-feature point lists sorted by the sweep progress at which the moving profile reaches them.
+  groups.order = lattice.progress.map((data) => {
+    const list = [];
+    for (let p = 0; p < lattice.count; p++) if (data[p] !== 255) list.push(p);
+    list.sort((a, b) => data[a] - data[b]);
+    return list;
+  });
+  groups.cursor = lattice.progress.map(() => 0);
+}
+
+function paintLattice(all) {
+  const colors = groups.latticeColors;
+  if (!colors) return;
+  const empty = new THREE.Color(token("--lattice-empty"));
+  const filled = new THREE.Color(token("--lattice-filled"));
+  const s = groups.latticeState;
+  const dirty = all ? null : groups.dirty;
+  const paint = (p) => {
+    const c = s[p] ? filled : empty;
+    colors[p * 3] = c.r; colors[p * 3 + 1] = c.g; colors[p * 3 + 2] = c.b;
+  };
+  if (dirty) { dirty.forEach(paint); dirty.clear(); } else { for (let p = 0; p < s.length; p++) paint(p); }
+  groups.lattice.geometry.attributes.color.needsUpdate = true;
+}
+
+// ---------- profiles moving along their trajectories ----------
+const TRAIL = 14;
+
+function sweepPoint(feature, instance, u, v, s, out, offset) {
+  const sw = feature.sweep;
+  const U = feature.frame.u, V = feature.frame.v, W = feature.frame.w;
+  let lx, ly, lz;
+  if (sw.kind === "linear") {
+    const w = sw.from + (sw.to - sw.from) * s;
+    const th = ((sw.twistDeg || 0) * s * Math.PI) / 180;
+    const c = Math.cos(th), sn = Math.sin(th);
+    const uu = u * c - v * sn, vv = u * sn + v * c;
+    lx = U[0] * uu + V[0] * vv + W[0] * w;
+    ly = U[1] * uu + V[1] * vv + W[1] * w;
+    lz = U[2] * uu + V[2] * vv + W[2] * w;
+  } else {
+    const angle = ((sw.startDeg + (sw.endDeg - sw.startDeg) * s) * Math.PI) / 180;
+    const c = Math.cos(angle), sn = Math.sin(angle);
+    lx = (U[0] * c + V[0] * sn) * u + W[0] * v;
+    ly = (U[1] * c + V[1] * sn) * u + W[1] * v;
+    lz = (U[2] * c + V[2] * sn) * u + W[2] * v;
+  }
+  const R = instance.r, T = instance.t;
+  out[offset] = R[0] * lx + R[1] * ly + R[2] * lz + T[0];
+  out[offset + 1] = R[3] * lx + R[4] * ly + R[5] * lz + T[1];
+  out[offset + 2] = R[6] * lx + R[7] * ly + R[8] * lz + T[2];
+}
+
+function segmentCount(feature) {
+  let n = 0;
+  for (const loop of feature.outlines) n += feature.sweep.kind === "linear" ? loop.length : loop.length - 1;
+  return n * feature.instances.length;
+}
+
+function fillSegments(feature, s, out, start) {
+  let o = start;
+  const closed = feature.sweep.kind === "linear";
+  for (const instance of feature.instances) {
+    for (const loop of feature.outlines) {
+      const n = loop.length;
+      const last = closed ? n : n - 1;
+      for (let i = 0; i < last; i++) {
+        const a = loop[i], b = loop[(i + 1) % n];
+        sweepPoint(feature, instance, a[0], a[1], s, out, o); o += 3;
+        sweepPoint(feature, instance, b[0], b[1], s, out, o); o += 3;
+      }
+    }
+  }
+  return o;
+}
+
+function buildProfiles() {
+  disposeGroup(groups.profiles);
+  const group = new THREE.Group();
+  const features = state.part.features.features;
+  const maxSegments = Math.max(...features.map(segmentCount), 1);
+  const current = new THREE.BufferGeometry();
+  current.setAttribute("position", new THREE.BufferAttribute(new Float32Array(maxSegments * 6), 3));
+  const trail = new THREE.BufferGeometry();
+  trail.setAttribute("position", new THREE.BufferAttribute(new Float32Array(maxSegments * 6 * TRAIL), 3));
+  groups.currentMaterial = new THREE.LineBasicMaterial({ color: token("--accent"), clippingPlanes: clipping });
+  groups.trailMaterial = new THREE.LineBasicMaterial({ color: token("--accent"), transparent: true, opacity: 0.22, clippingPlanes: clipping });
+  groups.currentLines = new THREE.LineSegments(current, groups.currentMaterial);
+  groups.trailLines = new THREE.LineSegments(trail, groups.trailMaterial);
+  group.add(groups.trailLines, groups.currentLines);
+  groups.profiles = group;
+  scene.add(group);
+}
+
+function easing(feature, t) {
+  // A drop along Z falls like the video: accelerating (gravity), in slow motion.
+  if (feature.sweep.kind === "linear" && feature.sweep.axis === "Z" && feature.sweep.to < feature.sweep.from) return t * t;
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function updateProfiles(feature, s) {
+  if (!feature) {
+    groups.currentLines.geometry.setDrawRange(0, 0);
+    groups.trailLines.geometry.setDrawRange(0, 0);
+    return;
+  }
+  const color = feature.op === "subtract" ? token("--cut") : feature.op === "intersect" ? token("--axis-z") : token("--accent");
+  groups.currentMaterial.color.set(color);
+  groups.trailMaterial.color.set(color);
+  const current = groups.currentLines.geometry;
+  const end = fillSegments(feature, s, current.attributes.position.array, 0);
+  current.setDrawRange(0, end / 3);
+  current.attributes.position.needsUpdate = true;
+  current.computeBoundingSphere();
+  const trail = groups.trailLines.geometry;
+  let o = 0;
+  for (let k = 0; k < TRAIL; k++) o = fillSegments(feature, (s * k) / TRAIL, trail.attributes.position.array, o);
+  trail.setDrawRange(0, o / 3);
+  trail.attributes.position.needsUpdate = true;
+  trail.computeBoundingSphere();
+}
+
+// ---------- solid ----------
+function buildSolid(preview) {
+  disposeGroup(groups.solid);
+  let geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(preview.positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(preview.indices, 1));
+  geometry = toCreasedNormals(geometry, (32 * Math.PI) / 180);
+  groups.solidMaterial = new THREE.MeshStandardMaterial({
+    color: token("--solid"),
+    metalness: 0.3,
+    roughness: 0.48,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0,
+    clippingPlanes: clipping
+  });
+  const mesh = new THREE.Mesh(geometry, groups.solidMaterial);
+  groups.solid = mesh;
+  scene.add(mesh);
+}
+
+// ---------- animation ----------
+function resetAnimation() {
+  state.featureIndex = 0;
+  state.t = 0;
+  state.revealing = 0;
+  state.finished = false;
+  groups.latticeState.fill(0);
+  groups.cursor = groups.cursor.map(() => 0);
+  groups.dirty = new Set();
+  paintLattice(true);
+  groups.solidMaterial.opacity = 0;
+  groups.solid.visible = false;
+  renderSteps();
+}
+
+function applyFeatureUpTo(f, s) {
+  const feature = state.part.features.features[f];
+  const data = state.part.lattice.progress[f];
+  const list = groups.order[f];
+  const value = feature.op === "subtract" ? 0 : 1;
+  const st = groups.latticeState;
+  let c = groups.cursor[f];
+  const limit = s * 254 + 1e-6;
+  while (c < list.length && data[list[c]] <= limit) {
+    const p = list[c++];
+    if (feature.op === "intersect") continue;
+    if (st[p] !== value) { st[p] = value; groups.dirty.add(p); }
+  }
+  groups.cursor[f] = c;
+  if (feature.op === "intersect" && s >= 1) {
+    for (let p = 0; p < st.length; p++) if (st[p] && data[p] === 255) { st[p] = 0; groups.dirty.add(p); }
+  }
+}
+
+function finishAnimation() {
+  const features = state.part.features.features;
+  for (let f = state.featureIndex; f < features.length; f++) applyFeatureUpTo(f, 1);
+  state.featureIndex = features.length;
+  state.t = 1;
+  state.finished = true;
+  state.revealing = 1;
+  groups.solid.visible = $("show-solid").checked;
+  groups.solidMaterial.opacity = 1;
+  paintLattice(false);
+  updateProfiles(null, 0);
+  verifyReplay();
+  renderSteps();
+}
+
+function verifyReplay() {
+  const final = state.part.lattice.final;
+  const st = groups.latticeState;
+  let mismatches = 0;
+  for (let p = 0; p < st.length; p++) if (st[p] !== final[p]) mismatches++;
+  state.replayMismatches = mismatches;
+  renderPills();
+}
+
+let lastTime = performance.now();
+function tick(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+  if (state.part && !state.finished && state.playing) {
+    const features = state.part.features.features;
+    const feature = features[state.featureIndex];
+    const duration = (feature.sweep.kind === "rotary" ? 2.6 : 2.2) / state.speed;
+    state.t = Math.min(1, state.t + dt / duration);
+    const s = easing(feature, state.t);
+    applyFeatureUpTo(state.featureIndex, s);
+    paintLattice(false);
+    if ($("show-profiles").checked) updateProfiles(feature, s); else updateProfiles(null, 0);
+    $("hud-step").innerHTML = `<b>${state.featureIndex + 1}/${features.length}</b> ${escapeHtml(feature.label)}`;
+    if (state.t >= 1) {
+      state.featureIndex++;
+      state.t = 0;
+      renderSteps();
+      if (state.featureIndex >= features.length) {
+        state.finished = true;
+        state.revealing = 0.0001;
+        groups.solid.visible = $("show-solid").checked;
+        updateProfiles(null, 0);
+        verifyReplay();
+        $("hud-step").innerHTML = `<b>Sólido</b> ${escapeHtml(state.part.entry.title)}`;
+        $("btn-play").textContent = "Reproducir";
+        state.playing = false;
+      }
+    }
+  }
+  if (state.finished && state.revealing > 0 && state.revealing < 1) {
+    state.revealing = Math.min(1, state.revealing + dt / 1.1);
+    groups.solidMaterial.opacity = state.revealing;
+  }
+  if (groups.solidMaterial) groups.solidMaterial.transparent = groups.solidMaterial.opacity < 1;
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// ---------- panel ----------
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function axisLabel(feature) {
+  const sw = feature.sweep;
+  if (sw.kind === "linear") {
+    const twist = sw.twistDeg ? ` + ${{ X: "A", Y: "B", Z: "C" }[sw.axis]} ${fmt(sw.twistDeg, 1)}°` : "";
+    return `${sw.axis} ${fmt(sw.from, 1)} → ${fmt(sw.to, 1)}${twist}`;
+  }
+  return `${sw.axis} ${fmt(sw.startDeg, 0)}° → ${fmt(sw.endDeg, 0)}°`;
+}
+
+function renderSteps() {
+  const features = state.part.features.features;
+  const opName = { add: "suma", subtract: "resta", intersect: "intersección" };
+  $("steps").innerHTML = features.map((f, i) => {
+    const cls = i === state.featureIndex && !state.finished ? "active" : i < state.featureIndex ? "done" : "";
+    const copies = f.instances.length > 1 ? ` · ${f.instances.length} copias` : "";
+    return `<li class="${cls}"><span class="n">${i + 1}</span><span>${escapeHtml(f.label)}<br><span class="op-${f.op}">${opName[f.op] || f.op}${copies}</span></span><span class="axis">${escapeHtml(axisLabel(f))}</span></li>`;
+  }).join("");
+}
+
+function renderPills() {
+  const report = state.part.report;
+  const passed = report.checks.filter((c) => c.passed).length;
+  const pills = [];
+  pills.push(`<span class="pill ${report.status === "PASS" ? "ok" : "bad"}">${report.status === "PASS" ? "Verificada" : "Con fallas"} ${passed}/${report.checks.length}</span>`);
+  const picogk = state.part.entry.picogk;
+  if (picogk) pills.push(`<span class="pill ${picogk === "PASS" ? "ok" : "bad"}">PicoGK ${picogk === "PASS" ? "coincide" : "falla"}</span>`);
+  else pills.push(`<span class="pill neutral">PicoGK sin correr</span>`);
+  if (state.replayMismatches !== undefined) {
+    pills.push(state.replayMismatches === 0
+      ? `<span class="pill ok">Malla = sólido</span>`
+      : `<span class="pill bad">Malla difiere en ${state.replayMismatches} puntos</span>`);
+  }
+  $("part-pills").innerHTML = pills.join("");
+}
+
+function renderPanel() {
+  const report = state.part.report;
+  const mesh = report.printMesh;
+  $("part-title").textContent = report.title;
+  renderPills();
+  renderSteps();
+  const size = mesh.boundsMax.map((v, i) => v - mesh.boundsMin[i]);
+  const rows = [
+    ["Triángulos (STL)", mesh.triangles.toLocaleString("es-MX")],
+    ["Volumen", `${fmt(mesh.volumeMm3 / 1000, 2)} cm³`],
+    ["Área", `${fmt(mesh.areaMm2 / 100, 1)} cm²`],
+    ["Caja X × Y × Z", `${fmt(size[0], 2)} × ${fmt(size[1], 2)} × ${fmt(size[2], 2)} mm`],
+    ["Agujeros pasantes (género)", String(mesh.genus ?? "—")],
+    ["Resolución / tolerancia", `${fmt(report.mesh.resolutionMm, 2)} / ${fmt(report.mesh.decimateToleranceMm, 3)} mm`],
+    ["Distancia máx. a la superficie ideal", `${fmt(Math.max(report.surfaceDistance.vertexMaxMm, report.surfaceDistance.triangleMaxMm), 3)} mm (cota medida)`],
+    ["Malla del visor", `${state.part.lattice.nx}×${state.part.lattice.ny}×${state.part.lattice.nz} puntos, paso ${fmt(state.part.lattice.step, 2)} mm`]
+  ];
+  $("metrics").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  $("params").innerHTML = report.parameters.map((p) => `<dt>${escapeHtml(p.name)}</dt><dd>${escapeHtml(p.value)}</dd>`).join("");
+  $("checks").innerHTML = report.checks.map((c) => `
+    <li><span class="mark ${c.passed ? "ok" : "bad"}">${c.passed ? "OK" : "FALLA"}</span>
+      <details><summary>${escapeHtml(c.description)}</summary>
+        <div class="detail">esperado: ${escapeHtml(c.expected)}<br>obtenido: ${escapeHtml(c.actual)}</div>
+      </details></li>`).join("");
+  const stl = state.part.entry.files.stl;
+  if (!stl) return;
+  fetch(stl, { method: "HEAD", cache: "no-store" }).then((r) => {
+    if (r.ok) $("files-note").innerHTML = `Geometría (CAD) en milímetros: <a href="${encodeURI(stl)}">descargar STL</a>. Fuera de alcance: trayectorias de herramienta y G-code (CAM).`;
+  }).catch(() => {});
+}
+
+// ---------- camera ----------
+function setView(kind) {
+  const part = state.part;
+  if (!part) return;
+  const center = part.center;
+  const distance = (part.radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
+  const directions = {
+    iso: new THREE.Vector3(1.1, -1.55, 1.05),
+    top: new THREE.Vector3(0, -0.0001, 1),
+    front: new THREE.Vector3(0, -1, 0),
+    side: new THREE.Vector3(1, 0, 0)
+  };
+  const dir = directions[kind].clone().normalize();
+  camera.position.copy(center).add(dir.multiplyScalar(distance));
+  camera.near = distance / 100;
+  camera.far = distance * 20;
+  camera.updateProjectionMatrix();
+  controls.target.copy(center);
+  controls.update();
+}
+
+// ---------- clipping ----------
+function updateClipping() {
+  const axis = $("cut-axis").value;
+  const slider = $("cut-pos");
+  slider.disabled = axis === "none";
+  clipping.length = 0;
+  if (axis !== "none" && state.part) {
+    const index = { x: 0, y: 1, z: 2 }[axis];
+    const min = state.part.min[index], max = state.part.max[index];
+    const position = min + (max - min) * Number(slider.value);
+    const normal = new THREE.Vector3(0, 0, 0);
+    normal.setComponent(index, -1);
+    clipPlane.set(normal, position);
+    clipping.push(clipPlane);
+  }
+  [groups.solidMaterial, groups.currentMaterial, groups.trailMaterial, groups.lattice && groups.lattice.material].forEach((m) => {
+    if (m) { m.clippingPlanes = clipping; m.needsUpdate = true; }
+  });
+}
+
+// ---------- loading ----------
+let loadCounter = 0;
+
+async function loadPart(entry) {
+  const ticket = ++loadCounter;
+  $("stage-message").hidden = true;
+  $("hud-step").textContent = `Cargando ${entry.title}…`;
+  const [previewBuffer, features, latticeBuffer, report] = await Promise.all([
+    fetchBuffer(entry.files.preview),
+    fetchJson(entry.files.features),
+    fetchBuffer(entry.files.lattice),
+    fetchJson(entry.files.report)
+  ]);
+  // A newer tab click won while this part was downloading: keep the newer one.
+  if (ticket !== loadCounter) return;
+  const preview = parsePreview(previewBuffer);
+  const lattice = parseLattice(latticeBuffer);
+  disposeGroup(groups.lattice);
+  disposeGroup(groups.profiles);
+  disposeGroup(groups.solid);
+  disposeGroup(groups.axes);
+  groups = {};
+  const min = new THREE.Vector3(...features.bounds.min);
+  const max = new THREE.Vector3(...features.bounds.max);
+  const center = min.clone().add(max).multiplyScalar(0.5);
+  const radius = Math.max(max.clone().sub(min).length() / 2, 1);
+  state.part = { entry, features, lattice, report, center, radius, min: features.bounds.min, max: features.bounds.max };
+  state.replayMismatches = undefined;
+  buildLattice(lattice);
+  buildProfiles();
+  buildSolid(preview);
+  buildAxes();
+  applyTheme();
+  updateClipping();
+  resetAnimation();
+  renderPanel();
+  setView("iso");
+  $("show-lattice").dispatchEvent(new Event("change"));
+  $("show-profiles").dispatchEvent(new Event("change"));
+  if (reducedMotion) finishAnimation();
+  else { state.playing = true; $("btn-play").textContent = "Pausa"; }
+}
+
+async function main() {
+  resize();
+  scene.background = new THREE.Color(token("--scene-bg"));
+  requestAnimationFrame(tick);
+  let index;
+  try {
+    index = await fetchJson("parts.json");
+  } catch (error) {
+    const message = $("stage-message");
+    message.hidden = false;
+    message.textContent = location.protocol === "file:"
+      ? "Abre el visor con el comando 'view' (el navegador bloquea los archivos locales abiertos directo)."
+      : `No se pudo leer parts.json: ${error.message}`;
+    $("hud-step").textContent = "Sin datos";
+    return;
+  }
+  state.index = index;
+  const tabs = $("part-tabs");
+  tabs.innerHTML = index.parts.map((p, i) => `<button type="button" data-part="${i}" aria-pressed="${i === 0}">${escapeHtml(shortName(p))}</button>`).join("");
+  tabs.addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-part]");
+    if (!button) return;
+    tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+    await safeLoad(index.parts[Number(button.dataset.part)]);
+  });
+  if (index.parts.length === 0) {
+    $("stage-message").hidden = false;
+    $("stage-message").textContent = "Esta carpeta no tiene piezas generadas.";
+    return;
+  }
+  await safeLoad(index.parts[0]);
+}
+
+function shortName(part) {
+  const names = { spurGear: "Engrane recto", helicalGear: "Engrane helicoidal", piston: "Pistón", monoblock: "Monoblock" };
+  return names[part.template] || part.title;
+}
+
+async function safeLoad(entry) {
+  try {
+    await loadPart(entry);
+  } catch (error) {
+    $("stage-message").hidden = false;
+    $("stage-message").textContent = `No se pudo cargar ${entry.title}: ${error.message}`;
+  }
+}
+
+// ---------- controls ----------
+$("btn-play").addEventListener("click", () => {
+  if (!state.part) return;
+  if (state.finished) { resetAnimation(); state.playing = true; }
+  else state.playing = !state.playing;
+  $("btn-play").textContent = state.playing ? "Pausa" : "Reproducir";
+});
+$("btn-restart").addEventListener("click", () => {
+  if (!state.part) return;
+  resetAnimation();
+  state.playing = true;
+  $("btn-play").textContent = "Pausa";
+});
+$("btn-finish").addEventListener("click", () => {
+  if (!state.part) return;
+  finishAnimation();
+  state.playing = false;
+  $("btn-play").textContent = "Reproducir";
+  $("hud-step").innerHTML = `<b>Sólido</b> ${escapeHtml(state.part.entry.title)}`;
+});
+$("speed").addEventListener("input", (e) => { state.speed = Number(e.target.value); });
+$("show-lattice").addEventListener("change", (e) => { if (groups.lattice) groups.lattice.visible = e.target.checked; });
+$("show-profiles").addEventListener("change", (e) => { if (groups.profiles) groups.profiles.visible = e.target.checked; });
+$("show-solid").addEventListener("change", (e) => { if (groups.solid) groups.solid.visible = e.target.checked && state.finished; });
+$("cut-axis").addEventListener("change", updateClipping);
+$("cut-pos").addEventListener("input", updateClipping);
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+main();
+</script>
+<!-- artifact:end -->
+</body>
+</html>
