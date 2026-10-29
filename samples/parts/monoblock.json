@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "picomoldforge.part-recipe.v1",
+  "name": "monoblock",
+  "title": "Monoblock 2 cilindros 40 mm (simplificado)",
+  "description": "Simplified inline two-cylinder block: open-deck water jacket, dry liners, crankcase open at the bottom with a center bulkhead, main bearing line bored along X, blind head bolt holes.",
+  "units": "mm",
+  "axisConvention": "ISO-841",
+  "template": {
+    "type": "monoblock",
+    "cylinders": 2,
+    "bore": 40.0,
+    "cylinderSpacing": 52.0,
+    "linerThickness": 4.0,
+    "jacketWidth": 5.0,
+    "jacketDepth": 45.0,
+    "length": 120.0,
+    "width": 84.0,
+    "height": 110.0,
+    "crankcaseHeight": 50.0,
+    "wallThickness": 6.0,
+    "bulkheadThickness": 10.0,
+    "mainBearingDiameter": 30.0,
+    "crankAxisHeight": 30.0,
+    "boltHoleDiameter": 6.8,
+    "boltDepth": 30.0,
+    "boltOffsetY": 35.5
+  },
+  "mesh": {
+    "resolutionMm": 0.35,
+    "decimate": true,
+    "decimateToleranceMm": 0.03
+  }
+}

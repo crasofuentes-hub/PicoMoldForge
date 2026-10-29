@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "picomoldforge.part-recipe.v1",
+  "name": "helical-gear",
+  "title": "Engrane helicoidal mn2 z24 beta 20",
+  "description": "Right-hand helical gear: the transverse profile drops along Z while it turns in C (combined Z + C motion). Normal module 2, helix angle 20 degrees.",
+  "units": "mm",
+  "axisConvention": "ISO-841",
+  "template": {
+    "type": "helicalGear",
+    "module": 2.0,
+    "teeth": 24,
+    "pressureAngleDeg": 20.0,
+    "helixAngleDeg": 20.0,
+    "faceWidth": 16.0,
+    "boreDiameter": 12.0,
+    "keywayWidth": 4.0,
+    "keywayDepth": 1.8
+  },
+  "mesh": {
+    "resolutionMm": 0.12,
+    "decimate": true,
+    "decimateToleranceMm": 0.01
+  }
+}
