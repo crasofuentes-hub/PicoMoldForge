@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using PicoMoldForge.Parts.Export;
 using PicoMoldForge.Parts.Features;
+using PicoMoldForge.Parts.Meshing;
 using PicoMoldForge.Parts.Pipeline;
 using PicoMoldForge.Parts.PicoGK;
 
@@ -28,7 +30,23 @@ public sealed record PicoGkCrossCheck(
     double? BoundsTolerance,
     int? Triangles,
     double? Seconds,
-    string? Stl);
+    string? Stl,
+    PicoGkTopology? Topology = null);
+
+/// <summary>
+/// Topology of the PicoGK STL measured like the reference mesh, after dropping the zero-area triangles that
+/// PicoGK's mesher emits. Volume and bounds alone would accept a missing small hole; genus would not.
+/// </summary>
+public sealed record PicoGkTopology(
+    bool Watertight,
+    int Components,
+    int? Genus,
+    int ExpectedComponents,
+    int? ExpectedGenus,
+    int DegenerateTriangles)
+{
+    public bool Matches => Watertight && Components == ExpectedComponents && Genus is not null && Genus == ExpectedGenus;
+}
 
 public sealed record RunOutcome(int ExitCode, string OutputDirectory, IReadOnlyList<(PartReport Report, PicoGkCrossCheck? PicoGk)> Parts);
 
@@ -276,38 +294,91 @@ public sealed class PartsRunner
 
         try
         {
-            var render = PicoGkPartRenderer.Render(part, voxel, Path.Combine(partDirectory, stlName));
-            var referenceVolume = reference.RawMesh.VolumeMm3;
-            var volumeDifference = Math.Abs(render.VolumeMm3 - referenceVolume) / Math.Max(referenceVolume, 1e-9);
-            var volumeTolerance = Math.Max(0.03, 0.25 * reference.RawMesh.AreaMm2 * voxel / Math.Max(referenceVolume, 1e-9));
-            var min = reference.PrintMesh.BoundsMin;
-            var max = reference.PrintMesh.BoundsMax;
-            var boundsDeviation = new[]
-            {
-                Math.Abs(render.BoundsMin.X - min[0]), Math.Abs(render.BoundsMin.Y - min[1]), Math.Abs(render.BoundsMin.Z - min[2]),
-                Math.Abs(render.BoundsMax.X - max[0]), Math.Abs(render.BoundsMax.Y - max[1]), Math.Abs(render.BoundsMax.Z - max[2])
-            }.Max();
-            var boundsTolerance = 1.5 * voxel;
-            var passed = volumeDifference <= volumeTolerance && boundsDeviation <= boundsTolerance && render.Triangles > 0;
-
-            return new PicoGkCrossCheck(
-                passed ? "PASS" : "FAIL",
-                passed ? null : "PicoGK difiere de la referencia mas de la tolerancia",
-                voxel,
-                Math.Round(render.VolumeMm3, 3),
-                referenceVolume,
-                Math.Round(volumeDifference, 5),
-                Math.Round(volumeTolerance, 5),
-                Math.Round(boundsDeviation, 4),
-                boundsTolerance,
-                render.Triangles,
-                Math.Round(render.Seconds, 2),
-                stlName);
+            var stlPath = Path.Combine(partDirectory, stlName);
+            var render = PicoGkPartRenderer.Render(part, voxel, stlPath);
+            var cross = CompareWithReference(reference, render, StlReader.ReadBinary(stlPath), voxel, stlName);
+            var topology = cross.Topology!;
+            _out.WriteLine(FormattableString.Invariant($"  [{part.Id}] PicoGK: volumen {cross.VolumeDifference * 100:0.###} %, caja {cross.BoundsDeviationMm:0.####} mm, genero {topology.Genus?.ToString(CultureInfo.InvariantCulture) ?? "?"} (referencia {topology.ExpectedGenus?.ToString(CultureInfo.InvariantCulture) ?? "?"}), {topology.DegenerateTriangles} triangulos de area cero ignorados"));
+            return cross;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             return new PicoGkCrossCheck("FAIL", ex.GetType().Name + ": " + ex.Message, voxel, null, null, null, null, null, null, null, null, null);
         }
+    }
+
+    /// <summary>
+    /// Compares an independent rendering (volume, bounds, and the topology of its STL) with the reference
+    /// report. Pure function of its inputs, so it is testable without the PicoGK runtime.
+    /// </summary>
+    public static PicoGkCrossCheck CompareWithReference(PartReport reference, PicoGkRenderResult render, StlReadResult picoMesh, double voxel, string stlName)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        ArgumentNullException.ThrowIfNull(render);
+        ArgumentNullException.ThrowIfNull(picoMesh);
+
+        var referenceVolume = reference.RawMesh.VolumeMm3;
+        var volumeDifference = Math.Abs(render.VolumeMm3 - referenceVolume) / Math.Max(referenceVolume, 1e-9);
+        var volumeTolerance = Math.Max(0.03, 0.25 * reference.RawMesh.AreaMm2 * voxel / Math.Max(referenceVolume, 1e-9));
+        var min = reference.PrintMesh.BoundsMin;
+        var max = reference.PrintMesh.BoundsMax;
+        var boundsDeviation = new[]
+        {
+            Math.Abs(render.BoundsMin.X - min[0]), Math.Abs(render.BoundsMin.Y - min[1]), Math.Abs(render.BoundsMin.Z - min[2]),
+            Math.Abs(render.BoundsMax.X - max[0]), Math.Abs(render.BoundsMax.Y - max[1]), Math.Abs(render.BoundsMax.Z - max[2])
+        }.Max();
+        var boundsTolerance = 1.5 * voxel;
+        var analysis = MeshAnalysis.Analyze(picoMesh.Mesh);
+        var topology = new PicoGkTopology(
+            analysis.Watertight,
+            analysis.Components,
+            analysis.Genus,
+            reference.PrintMesh.Components,
+            reference.PrintMesh.Genus,
+            picoMesh.DroppedDegenerateTriangles);
+
+        var problems = new List<string>();
+
+        if (render.Triangles == 0)
+        {
+            problems.Add("PicoGK no genero triangulos");
+        }
+
+        if (volumeDifference > volumeTolerance)
+        {
+            problems.Add(FormattableString.Invariant($"volumen difiere {volumeDifference * 100:0.###} % (tolerancia {volumeTolerance * 100:0.###} %)"));
+        }
+
+        if (boundsDeviation > boundsTolerance)
+        {
+            problems.Add(FormattableString.Invariant($"caja difiere {boundsDeviation:0.####} mm (tolerancia {boundsTolerance:0.####} mm)"));
+        }
+
+        if (!topology.Watertight)
+        {
+            problems.Add("la malla de PicoGK no es cerrada, manifold y orientada: su topologia no se puede comparar");
+        }
+        else if (!topology.Matches)
+        {
+            problems.Add(FormattableString.Invariant($"topologia distinta: {topology.Components} cuerpo(s) y genero {topology.Genus?.ToString(CultureInfo.InvariantCulture) ?? "?"} contra {topology.ExpectedComponents} y {topology.ExpectedGenus?.ToString(CultureInfo.InvariantCulture) ?? "?"}"));
+        }
+
+        var passed = problems.Count == 0;
+
+        return new PicoGkCrossCheck(
+            passed ? "PASS" : "FAIL",
+            passed ? null : "PicoGK difiere de la referencia: " + string.Join("; ", problems),
+            voxel,
+            Math.Round(render.VolumeMm3, 3),
+            referenceVolume,
+            Math.Round(volumeDifference, 5),
+            Math.Round(volumeTolerance, 5),
+            Math.Round(boundsDeviation, 4),
+            boundsTolerance,
+            render.Triangles,
+            Math.Round(render.Seconds, 2),
+            stlName,
+            topology);
     }
 
     /// <summary>Index of every part folder in the output root (so repeated runs accumulate in one viewer).</summary>
