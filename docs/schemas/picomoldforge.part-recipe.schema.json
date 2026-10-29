@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/crasofuentes-hub/PicoMoldForge/schemas/picomoldforge.part-recipe.schema.json",
+  "title": "PicoMoldForge Part Recipe",
+  "description": "Recipe for one mechanical part (CAD) of PicoMoldForge Parts. Millimeters, ISO 841 axes: X, Y, Z linear; A, B, C rotary about X, Y, Z (right-hand rule); orientations apply A, then B, then C about the fixed axes (R = Rz(C) Ry(B) Rx(A)). A recipe uses exactly one of 'template' or 'features'. The loader rejects unknown properties. Tool paths / G-code (CAM) are out of scope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name"],
+  "oneOf": [
+    { "required": ["template"], "not": { "anyOf": [{ "required": ["features"] }, { "required": ["expect"] }] } },
+    { "required": ["features"], "not": { "required": ["template"] } }
+  ],
+  "properties": {
+    "schemaVersion": { "const": "picomoldforge.part-recipe.v1" },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "description": "Part id; also the output folder and STL file name."
+    },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "units": { "const": "mm" },
+    "axisConvention": { "const": "ISO-841" },
+    "template": { "$ref": "#/$defs/template" },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/feature" },
+      "description": "Ordered features; the first one must add material. Feature ids must be unique."
+    },
+    "expect": { "$ref": "#/$defs/expect" },
+    "mesh": { "$ref": "#/$defs/mesh" }
+  },
+  "$defs": {
+    "vec2": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "vec3": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "mesh": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference meshing. Defaults per template: gears 0.12 / 0.01 mm, piston 0.18 / 0.015 mm, monoblock 0.35 / 0.03 mm, feature recipes 0.2 / 0.02 mm.",
+      "properties": {
+        "resolutionMm": { "type": "number", "minimum": 0.02, "maximum": 10 },
+        "decimate": { "type": "boolean" },
+        "decimateToleranceMm": { "type": "number", "exclusiveMinimum": 0, "description": "At most resolutionMm." },
+        "previewMaxTriangles": { "type": "integer", "minimum": 1000, "maximum": 5000000 }
+      }
+    },
+    "template": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["spurGear", "helicalGear", "piston", "monoblock"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["spurGear", "helicalGear"] } } },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "module": { "type": "number", "description": "Normal module m_n in mm (default 2)." },
+              "teeth": { "type": "integer", "description": "Default 24." },
+              "pressureAngleDeg": { "type": "number", "description": "Normal pressure angle (default 20)." },
+              "helixAngleDeg": { "type": "number", "description": "0 for spurGear; non-zero for helicalGear (default 20, positive = right hand)." },
+              "faceWidth": { "type": "number", "description": "Default 12 mm." },
+              "boreDiameter": { "type": "number", "description": "0 = no bore (default 12 mm)." },
+              "keywayWidth": { "type": "number", "description": "0 = no keyway (default 4 mm)." },
+              "keywayDepth": { "type": "number", "description": "Hub keyway depth from the bore surface (default 1.8 mm)." },
+              "profileShift": { "type": "number", "description": "Profile shift coefficient x (default 0)." },
+              "thicknessAllowance": { "type": "number", "description": "Tooth thinning at the pitch circle in mm, for backlash (default 0)." }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "piston" } } },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "boreDiameter": { "type": "number" },
+              "clearance": { "type": "number" },
+              "height": { "type": "number" },
+              "compressionHeight": { "type": "number" },
+              "pinDiameter": { "type": "number" },
+              "pinBossDiameter": { "type": "number" },
+              "pinBossGap": { "type": "number" },
+              "crownThickness": { "type": "number" },
+              "skirtWall": { "type": "number" },
+              "ringBeltWall": { "type": "number" },
+              "topLand": { "type": "number" },
+              "ringGrooveWidths": { "type": "array", "items": { "type": "number" } },
+              "ringLands": { "type": "array", "items": { "type": "number" } },
+              "grooveDepth": { "type": "number" },
+              "skirtReliefDepth": { "type": "number" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "monoblock" } } },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "cylinders": { "type": "integer" },
+              "bore": { "type": "number" },
+              "cylinderSpacing": { "type": "number" },
+              "linerThickness": { "type": "number" },
+              "jacketWidth": { "type": "number" },
+              "jacketDepth": { "type": "number" },
+              "length": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" },
+              "crankcaseHeight": { "type": "number" },
+              "wallThickness": { "type": "number" },
+              "bulkheadThickness": { "type": "number" },
+              "mainBearingDiameter": { "type": "number" },
+              "crankAxisHeight": { "type": "number" },
+              "boltHoleDiameter": { "type": "number" },
+              "boltDepth": { "type": "number" },
+              "boltOffsetY": { "type": "number" }
+            }
+          }
+        }
+      ]
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "op", "sweep", "profile"],
+      "not": { "required": ["origin", "positions"] },
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "type": "string" },
+        "op": { "enum": ["add", "subtract", "intersect"] },
+        "sweep": { "$ref": "#/$defs/sweep" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "origin": { "$ref": "#/$defs/vec3", "description": "Placement of the feature frame (default [0, 0, 0])." },
+        "positions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/vec3" }, "description": "Several placements instead of 'origin'." },
+        "orientation": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Degrees about the fixed X, Y, Z axes, applied A, then B, then C.",
+          "properties": {
+            "A": { "type": "number" },
+            "B": { "type": "number" },
+            "C": { "type": "number" }
+          }
+        },
+        "pattern": { "$ref": "#/$defs/pattern" }
+      }
+    },
+    "sweep": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "axis", "from", "to"],
+          "description": "Linear sweep ('dejar caer'): the profile in the plane normal to the axis moves from 'from' to 'to'. Frames: Z -> profile (X, Y); X -> profile (Y, Z); Y -> profile (Z, X). Optional twist turns the profile about the same axis while it moves (e.g. Z + C).",
+          "properties": {
+            "kind": { "const": "linear" },
+            "axis": { "enum": ["X", "Y", "Z", "x", "y", "z"] },
+            "from": { "type": "number" },
+            "to": { "type": "number" },
+            "twistDeg": { "type": "number", "description": "Total right-hand rotation from 'from' to 'to' (default 0)." }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "axis"],
+          "description": "Rotary sweep ('girar'): the profile in the (radial, axial) plane turns about A (X), B (Y) or C (Z). Profiles that touch the axis must be 'halfSection' (mirrored) or a full symmetric section.",
+          "properties": {
+            "kind": { "const": "rotary" },
+            "axis": { "enum": ["A", "B", "C", "a", "b", "c"] },
+            "startDeg": { "type": "number", "description": "Default 0." },
+            "endDeg": { "type": "number", "description": "Default 360; |end - start| must be in (0, 360]." }
+          }
+        }
+      ]
+    },
+    "pattern": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "axis", "count"],
+          "properties": {
+            "type": { "const": "circular" },
+            "axis": { "enum": ["A", "B", "C", "a", "b", "c"] },
+            "count": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "startDeg": { "type": "number" },
+            "spanDeg": { "type": "number", "description": "Default 360 (copies evenly spaced over the full turn)." },
+            "center": { "$ref": "#/$defs/vec3" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "axis", "count", "step"],
+          "properties": {
+            "type": { "const": "linear" },
+            "axis": { "enum": ["X", "Y", "Z", "x", "y", "z"] },
+            "count": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "step": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "profile": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "diameter"],
+          "properties": {
+            "type": { "const": "circle" },
+            "center": { "$ref": "#/$defs/vec2" },
+            "diameter": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "outerDiameter", "innerDiameter"],
+          "properties": {
+            "type": { "const": "ring" },
+            "center": { "$ref": "#/$defs/vec2" },
+            "outerDiameter": { "type": "number", "exclusiveMinimum": 0 },
+            "innerDiameter": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "min", "max"],
+          "properties": {
+            "type": { "const": "rectangle" },
+            "min": { "$ref": "#/$defs/vec2" },
+            "max": { "$ref": "#/$defs/vec2" },
+            "cornerRadius": { "type": "number", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "points"],
+          "properties": {
+            "type": { "enum": ["polygon", "halfSection"] },
+            "points": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/vec2" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "profiles"],
+          "properties": {
+            "type": { "const": "union" },
+            "profiles": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/profile" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "base", "cut"],
+          "properties": {
+            "type": { "const": "difference" },
+            "base": { "$ref": "#/$defs/profile" },
+            "cut": { "$ref": "#/$defs/profile" }
+          }
+        }
+      ]
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Expectations for feature recipes (templates define their own).",
+      "properties": {
+        "genus": { "type": "integer", "minimum": 0, "description": "Number of through holes measured on the mesh." },
+        "boundingBox": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "$ref": "#/$defs/vec3" },
+            "max": { "$ref": "#/$defs/vec3" }
+          }
+        },
+        "boundingBoxToleranceMm": { "type": "number", "minimum": 0 },
+        "surfacePoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "point"],
+            "properties": {
+              "id": { "type": "string" },
+              "description": { "type": "string" },
+              "point": { "$ref": "#/$defs/vec3" },
+              "toleranceMm": { "type": "number", "exclusiveMinimum": 0, "description": "Default 0.002 mm." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -169,12 +169,25 @@ Expected output directory:
 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-baseline.ps1"
 
+## PicoMoldForge Parts (mechanical parts CAD)
+
+PicoMoldForge Parts generates mechanical parts from JSON recipes: spur and helical involute gears, a simplified piston, a simplified two-cylinder engine block and generic feature recipes (profile + trajectory in X, Y, Z, A, B, C, ISO 841). Each part is exported as a verified binary STL, optionally cross-checked against an independent PicoGK voxel rendering (Windows x64 / macOS arm64), and shown in the "modo malla" browser viewer, where a lattice fills feature by feature while each profile drops or turns along its trajectory.
+
+Run the demo (build, tests, five sample parts, ZIP on the Desktop, viewer):
+
+    Set-Location "C:\repos\PicoMoldForge"
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\run-parts-demo.ps1"
+
+Tool paths / G-code (CAM) and STEP export are out of scope. See docs/PARTS_FORGE.md.
+
 ## Project documentation
 
 Additional documentation is available in:
 
 - docs/GENERATOR_USAGE.md
 - docs/V5_FINAL_ROADMAP_STATUS.md
+- docs/PARTS_FORGE.md
 - phase status documents under docs/
 
 ## Next development track
