@@ -59,7 +59,9 @@ From the repository root:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-parts-demo.ps1
 
-The script builds the Parts projects (Release), runs their tests including the PicoGK native tests,
+The script first closes any PicoMoldForge Parts program still running (a viewer left open by an
+earlier run keeps the build output locked, and the build then fails with MSB3027), then builds the
+Parts projects (Release), runs their tests including the PicoGK native tests,
 generates the five sample parts with the reference mesher and the PicoGK cross-check into
 `parts-output\`, zips outputs and logs into one file on the Desktop (also when the build fails),
 prints a PASS/FAIL table and opens the viewer at `http://127.0.0.1:8765/` from its own window
