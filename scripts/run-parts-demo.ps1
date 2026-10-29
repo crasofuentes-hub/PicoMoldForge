@@ -33,6 +33,7 @@ $logDir = Join-Path $repoRoot (Join-Path "parts-logs" $stamp)
 $outputDir = Join-Path $repoRoot "parts-output"
 $cliDll = Join-Path $repoRoot "src\PicoMoldForge.Parts.Cli\bin\Release\net9.0\PicoMoldForge.Parts.Cli.dll"
 $results = New-Object System.Collections.Generic.List[object]
+$notes = New-Object System.Collections.Generic.List[string]
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
@@ -57,6 +58,27 @@ function Invoke-Logged {
     Get-Content -LiteralPath $logFile -Tail 25 | ForEach-Object { Write-Host ("   | " + $_) }
   }
   return $code
+}
+
+# The launcher's own record (commit, closed processes, step table, verdict) goes into the logs folder,
+# so the ZIP carries the same verdict the console shows. The ZIP step itself runs after it.
+function Save-LauncherSummary {
+  try {
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add("PicoMoldForge Parts - resumen del lanzador")
+    $lines.Add("Fecha:       " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"))
+    $lines.Add("Repositorio: " + $repoRoot)
+    $commit = @(cmd /c ('git -C "' + $repoRoot + '" rev-parse HEAD 2>nul'))
+    if ($commit.Count -gt 0) { $lines.Add("Commit:      " + $commit[0]) } else { $lines.Add("Commit:      (no disponible)") }
+    foreach ($note in $notes) { $lines.Add($note) }
+    $lines.Add("")
+    $lines.Add(($results | Format-Table -AutoSize | Out-String -Width 220).TrimEnd())
+    $failedSteps = @($results | Where-Object { $_.Estado -eq "FAIL" }).Count
+    if ($failedSteps -eq 0) { $lines.Add("Veredicto: PASS") } else { $lines.Add("Veredicto: FAIL (" + $failedSteps + " paso(s) con falla)") }
+    [System.IO.File]::WriteAllLines((Join-Path $logDir "launcher-summary.txt"), $lines)
+  } catch {
+    Write-Host ("No se pudo escribir launcher-summary.txt: " + $_.Exception.Message) -ForegroundColor Yellow
+  }
 }
 
 # One zip on the Desktop with the logs and the outputs. Entry names use "/" so the zip also opens
@@ -132,11 +154,14 @@ try {
     Where-Object { $_.CommandLine -and ($_.CommandLine.IndexOf("PicoMoldForge.Parts.Cli.dll", [System.StringComparison]::OrdinalIgnoreCase) -ge 0) })
 } catch {
   Write-Host ("No se pudo revisar si hay un visor abierto: " + $_.Exception.Message) -ForegroundColor Yellow
+  $notes.Add("No se pudo revisar si habia un visor abierto: " + $_.Exception.Message)
 }
 foreach ($process in $running) {
   Write-Host ("Cerrando una ejecucion anterior del programa (PID " + $process.ProcessId + "), por ejemplo un visor que quedo abierto.") -ForegroundColor Yellow
+  $notes.Add("Cerrada una ejecucion anterior del programa: PID " + $process.ProcessId + " | " + $process.CommandLine)
   Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
 }
+if ($running.Count -eq 0) { $notes.Add("No habia ejecuciones anteriores del programa abiertas.") }
 if ($running.Count -gt 0) {
   Start-Sleep -Seconds 2
   Add-Result "Ejecuciones anteriores" "PASS" ($running.Count.ToString() + " cerrada(s)")
@@ -173,6 +198,7 @@ if ($buildFailed) {
 if ($buildFailed -or -not (Test-Path -LiteralPath $cliDll)) {
   Write-Host ""
   Write-Host "La compilacion fallo; no se puede continuar. Los logs quedan en el ZIP del Escritorio." -ForegroundColor Red
+  Save-LauncherSummary
   Save-Zip
   Show-Summary | Out-Null
   exit 1
@@ -220,7 +246,8 @@ if (Test-Path -LiteralPath $summaryFile) {
   Get-Content -LiteralPath $summaryFile | ForEach-Object { Write-Host $_ }
 }
 
-# 6. Zip outputs and logs on the Desktop
+# 6. Zip outputs and logs (with launcher-summary.txt) on the Desktop
+Save-LauncherSummary
 Save-Zip
 
 # 7. Summary
