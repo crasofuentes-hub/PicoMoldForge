@@ -41,12 +41,28 @@ public static class PicoGkRuntimeAvailability
             return (false, $"the PicoGK native runtime ({Config.strPicoGKLib}) only ships for Windows x64 and macOS arm64 (this is {RuntimeInformation.OSDescription}, {RuntimeInformation.ProcessArchitecture}).");
         }
 
-        if (NativeLibrary.TryLoad(Config.strPicoGKLib, typeof(Library).Assembly, DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory, out _))
+        try
         {
+            NativeLibrary.Load(Config.strPicoGKLib, typeof(Library).Assembly, DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory);
             return (true, "PicoGK native runtime loaded.");
         }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
+        {
+            var windows = OperatingSystem.IsWindows();
+            var fileName = Config.strPicoGKLib + (windows ? ".dll" : ".dylib");
+            var nativeFolder = Path.Combine(AppContext.BaseDirectory, "runtimes", windows ? "win-x64" : "osx-arm64", "native");
+            var present = File.Exists(Path.Combine(nativeFolder, fileName)) || File.Exists(Path.Combine(AppContext.BaseDirectory, fileName));
 
-        return (false, $"The PicoGK native runtime '{Config.strPicoGKLib}' was not found next to the application.");
+            if (present && windows)
+            {
+                // picogk.26.1.dll imports MSVCP140, VCRUNTIME140 and VCRUNTIME140_1, which the package does not ship.
+                return (false, $"the PicoGK native runtime ({fileName}) is present but could not be loaded: {ex.Message} Install the Microsoft Visual C++ 2015-2022 Redistributable (x64) and try again.");
+            }
+
+            return present
+                ? (false, $"the PicoGK native runtime ({fileName}) is present but could not be loaded: {ex.Message}")
+                : (false, $"the PicoGK native runtime ({fileName}) was not found next to the application: {ex.Message}");
+        }
     }
 }
 
@@ -131,18 +147,35 @@ public static class PicoGkViewer
         var box = new BBox3(
             (float)bounds.Min.X, (float)bounds.Min.Y, (float)bounds.Min.Z,
             (float)bounds.Max.X, (float)bounds.Max.Y, (float)bounds.Max.Z);
+        Exception? failure = null;
 
+        // Library.Go runs the task on its own thread: an exception there would end the process, so it is
+        // captured and rethrown here, where the command line turns it into an exit code.
         Library.Go(
             (float)voxelSizeMm,
             () =>
             {
-                var voxels = new Voxels(Library.oLibrary(), new SdfImplicit(part.Sdf), box);
-                Library.oViewer().SetGroupMaterial(0, "E8A33D", 0.35f, 0.55f);
-                Library.oViewer().Add(voxels, 0);
-                Library.Log($"PicoMoldForge Parts: {part.Title} ({part.Id}) rendered at {voxelSizeMm} mm voxels. Close the window to finish.");
+                try
+                {
+                    var voxels = new Voxels(Library.oLibrary(), new SdfImplicit(part.Sdf), box);
+                    Library.oViewer().SetGroupMaterial(0, "E8A33D", 0.35f, 0.55f);
+                    Library.oViewer().Add(voxels, 0);
+
+                    // Library.Log formats its first argument: pass the text as data so braces in a title are safe.
+                    Library.Log("{0}", $"PicoMoldForge Parts: {part.Title} ({part.Id}) rendered at {voxelSizeMm} mm voxels. Close the window to finish.");
+                }
+                catch (Exception ex)
+                {
+                    failure = ex;
+                }
             },
             logPath,
             false,
             "PicoMoldForge Parts - " + part.Title);
+
+        if (failure is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
     }
 }

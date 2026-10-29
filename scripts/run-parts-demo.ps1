@@ -12,6 +12,7 @@
 #   -NoViewer       do not start the viewer at the end
 #   -Port <n>       viewer port (default 8765)
 #
+# Exit code: 0 when every step passed, 1 otherwise. The viewer runs in its own window.
 # Out of scope by design: tool paths / G-code (CAM) and STEP export.
 
 param(
@@ -58,6 +59,48 @@ function Invoke-Logged {
   return $code
 }
 
+# One zip on the Desktop with the logs and the outputs. Entry names use "/" so the zip also opens
+# correctly outside Windows (Compress-Archive in Windows PowerShell 5.1 writes "\").
+function Save-Zip {
+  try {
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    $zipPath = Join-Path $desktop ("PicoMoldForge-Parts-" + $stamp + ".zip")
+    if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
+    $folders = @($logDir)
+    if (Test-Path -LiteralPath $outputDir) { $folders += $outputDir }
+    $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+      foreach ($folder in $folders) {
+        foreach ($file in (Get-ChildItem -LiteralPath $folder -Recurse -File)) {
+          $entryName = $file.FullName.Substring($repoRoot.Length).TrimStart('\').Replace('\', '/')
+          [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+      }
+    } finally {
+      $archive.Dispose()
+    }
+    Add-Result "ZIP en el Escritorio" "PASS" $zipPath
+    cmd /c ('explorer /select,"' + $zipPath + '"') | Out-Null
+  } catch {
+    Add-Result "ZIP en el Escritorio" "FAIL" $_.Exception.Message
+  }
+}
+
+function Show-Summary {
+  Write-Host ""
+  Write-Host "== RESUMEN" -ForegroundColor Cyan
+  $results | Format-Table -AutoSize | Out-String | Write-Host
+  $failedSteps = @($results | Where-Object { $_.Estado -eq "FAIL" }).Count
+  if ($failedSteps -eq 0) {
+    Write-Host "PICOMOLDFORGE PARTS: PASS" -ForegroundColor Green
+  } else {
+    Write-Host ("PICOMOLDFORGE PARTS: FAIL (" + $failedSteps + " paso(s) con falla)") -ForegroundColor Red
+  }
+  return $failedSteps
+}
+
 Write-Host "PicoMoldForge Parts - demo" -ForegroundColor Cyan
 Write-Host ("Repositorio: " + $repoRoot)
 Write-Host ("Logs:        " + $logDir)
@@ -102,8 +145,9 @@ if ($buildFailed) {
 
 if ($buildFailed -or -not (Test-Path -LiteralPath $cliDll)) {
   Write-Host ""
-  Write-Host "La compilacion fallo; no se puede continuar." -ForegroundColor Red
-  $results | Format-Table -AutoSize | Out-String | Write-Host
+  Write-Host "La compilacion fallo; no se puede continuar. Los logs quedan en el ZIP del Escritorio." -ForegroundColor Red
+  Save-Zip
+  Show-Summary | Out-Null
   exit 1
 }
 
@@ -150,35 +194,16 @@ if (Test-Path -LiteralPath $summaryFile) {
 }
 
 # 5. Zip outputs and logs on the Desktop
-$zipPath = $null
-try {
-  $desktop = [Environment]::GetFolderPath("Desktop")
-  $zipPath = Join-Path $desktop ("PicoMoldForge-Parts-" + $stamp + ".zip")
-  $items = @($logDir)
-  if (Test-Path -LiteralPath $outputDir) { $items += $outputDir }
-  Compress-Archive -LiteralPath $items -DestinationPath $zipPath -Force
-  Add-Result "ZIP en el Escritorio" "PASS" $zipPath
-  cmd /c ('explorer /select,"' + $zipPath + '"') | Out-Null
-} catch {
-  Add-Result "ZIP en el Escritorio" "FAIL" $_.Exception.Message
-}
+Save-Zip
 
 # 6. Summary
-Write-Host ""
-Write-Host "== RESUMEN" -ForegroundColor Cyan
-$results | Format-Table -AutoSize | Out-String | Write-Host
-$failed = @($results | Where-Object { $_.Estado -eq "FAIL" }).Count
-if ($failed -eq 0) {
-  Write-Host "PICOMOLDFORGE PARTS: PASS" -ForegroundColor Green
-} else {
-  Write-Host ("PICOMOLDFORGE PARTS: FAIL (" + $failed + " paso(s) con falla)") -ForegroundColor Red
-}
+$failed = Show-Summary
 
-# 7. Viewer (blocks until Ctrl+C)
+# 7. Viewer in its own window (close that window, or press Ctrl+C in it, to stop it)
 if ((-not $NoViewer) -and (Test-Path -LiteralPath (Join-Path $outputDir "index.html"))) {
   Write-Host ""
-  Write-Host ("Abriendo el visor 'modo malla' en http://127.0.0.1:" + $Port + "/  (Ctrl+C para cerrarlo)") -ForegroundColor Cyan
-  cmd /c ('dotnet "' + $cliDll + '" view --output "' + $outputDir + '" --port ' + $Port)
+  Write-Host ("Visor 'modo malla' en http://127.0.0.1:" + $Port + "/  (se abre en otra ventana; cierrala para terminarlo)") -ForegroundColor Cyan
+  Start-Process -FilePath "dotnet" -ArgumentList ('"' + $cliDll + '" view --output "' + $outputDir + '" --port ' + $Port)
 }
 
 if ($failed -eq 0) { exit 0 } else { exit 1 }

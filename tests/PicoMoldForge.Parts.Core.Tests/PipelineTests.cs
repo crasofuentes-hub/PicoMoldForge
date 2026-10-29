@@ -160,6 +160,18 @@ public sealed class RunManifestTests
     }
 
     [Fact]
+    public void ProvisionalManifest_IsMarkedIncomplete()
+    {
+        using var temp = new TempDirectory();
+
+        var path = RunManifestWriter.Write(temp.Path, "demo", Array.Empty<RunManifestPart>(), Array.Empty<string>(), RunManifestWriter.IncompleteStatus);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(RunManifestWriter.Schema, document.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.Equal("INCOMPLETE", document.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public void PathGuard_RefusesDangerousFolders()
     {
         Assert.Throws<InvalidOperationException>(() => OutputPathGuard.EnsureSafe(Path.GetPathRoot(Path.GetTempPath())!));

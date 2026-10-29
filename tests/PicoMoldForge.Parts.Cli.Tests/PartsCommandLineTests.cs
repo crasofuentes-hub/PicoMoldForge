@@ -144,6 +144,23 @@ public sealed class PartsCommandLineTests
     }
 
     [Fact]
+    public void InterruptedRun_LeavesAFolderTheNextRunAccepts()
+    {
+        // A run that dies half way leaves its provisional manifest and partial part files behind.
+        using var temp = new TempDirectory();
+        var output = Path.Combine(temp.Path, "out");
+        Directory.CreateDirectory(Path.Combine(output, "spur-gear"));
+        File.WriteAllText(Path.Combine(output, "spur-gear", "recipe.json"), "{}");
+        PicoMoldForge.Parts.Pipeline.RunManifestWriter.Write(output, "demo", Array.Empty<PicoMoldForge.Parts.Pipeline.RunManifestPart>(), Array.Empty<string>(), PicoMoldForge.Parts.Pipeline.RunManifestWriter.IncompleteStatus);
+
+        var (code, text, error) = Run("generate", "--sample", "spur-gear", "--resolution", "0.6", "--output", output, "--clean-output");
+
+        Assert.True(code == 0, text + error);
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(output, "RunManifest.json")));
+        Assert.Equal("PASS", manifest.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public void PicoGkBackend_ReportsWhenTheRuntimeIsMissing()
     {
         if (PicoGkRuntimeAvailability.IsAvailable)
