@@ -168,8 +168,12 @@ How to read the numbers:
   Production meshes are sampled completely or with stride 2 (50 000 samples per kind).
 - Marching cubes flattens sharp edges by up to about half a resolution step. For sharp-edge accuracy
   use a finer `resolutionMm`.
-- The PicoGK cross-check compares volume (tolerance max(3 %, a quarter of the area times one voxel))
-  and bounding box (1.5 voxels) of an independent voxel rendering against the reference mesh.
+- The PicoGK cross-check compares an independent voxel rendering against the reference mesh: volume
+  (tolerance max(3 %, a quarter of the area times one voxel)), bounding box (1.5 voxels) and topology
+  (the PicoGK STL must be closed, manifold and oriented, with the same number of bodies and the same
+  genus, after dropping the zero-area triangles PicoGK's mesher emits). Volume and box alone would
+  accept a missing small hole: the flange without its grease hole differs by 0.35 % in volume and not
+  at all in the box, but its genus is 7 instead of 8 (`CrossCheckTests`).
 
 Measured with the default sample settings (Linux x64, 2 cores, Release, reference backend; distances
 are upper bounds; triangle samples are centroid plus edge midpoints):
@@ -182,8 +186,23 @@ are upper bounds; triangle samples are centroid plus edge midpoints):
 | monoblock | 0.35 / 0.03 mm | 31 850 | 5 | 0.086 mm (all) | 0.233 mm (all) |
 | flange | 0.2 / 0.02 mm | 90 754 | 8 | 0.040 mm (all) | 0.100 mm (every 2nd) |
 
-Numbers on other machines may differ in the last digits (floating-point math libraries differ between
-operating systems); each run reports its own values in `part-report.json`.
+First run on Windows x64 (29 Oct 2026, `run-parts-demo.ps1`, reference mesher plus PicoGK
+cross-check): builds without warnings, Parts.Core 100, Parts.Cli 19 and PicoGK native 4 tests passed,
+the five parts passed every check and the PicoGK cross-check:
+
+| Part | STL triangles, Windows / Linux | PicoGK voxel | Volume difference | Box deviation | PicoGK genus | Zero-area triangles in the PicoGK STL |
+|------|--------------------------------|--------------|-------------------|---------------|--------------|---------------------------------------|
+| spur-gear | 34 116 / 34 626 | 0.24 mm | 0.106 % | 0.0034 mm | 1 | 288 |
+| helical-gear | 16 342 / 16 630 | 0.24 mm | 0.097 % | 0.0076 mm | 1 | 390 |
+| piston | 70 994 / 70 994 | 0.36 mm | 0.663 % | 0.0146 mm | 2 | 0 |
+| monoblock | 31 850 / 31 850 | 0.7 mm | 0.054 % | 0.0166 mm | 5 | 0 |
+| flange | 90 602 / 90 754 | 0.4 mm | 0.029 % | 0.0025 mm | 8 | 6 912 |
+
+Results differ slightly between operating systems because their floating-point math libraries
+differ: on Windows the gears and the flange came out with up to 1.7 % fewer triangles, volumes
+differ by at most 0.006 %, and the largest triangle-sample distance of the helical gear was 0.083 mm
+instead of 0.064 mm (limit 0.12 mm). Piston and monoblock were identical. Each run reports its own
+values in `part-report.json`.
 
 ## Viewer ("modo malla")
 
@@ -209,6 +228,10 @@ package does not include: the Microsoft Visual C++ 2015-2022 Redistributable (x6
 the runtime cannot be loaded the cross-check fails with the reason (platform, missing file or the
 loader's error). `picogk-view` opens the native viewer window (`Library.Go`).
 
+The `<id>.picogk.stl` files exist only for the comparison. PicoGK's mesher writes some zero-area
+triangles (288 to 6 912 in the samples), which some slicers report as errors; print `<id>.stl`, the
+verified reference mesh, which has none.
+
 The PicoGK native tests are opt-in so the default `dotnet test` never depends on the runtime:
 
     $env:PICOMOLDFORGE_PARTS_PICOGK_TESTS = "1"
@@ -222,6 +245,7 @@ The PicoGK native tests are opt-in so the default `dotnet test` never depends on
   holes, no head, no ports, no casting draft).
 - Gears: ISO 53 profile A rack generation with profile shift and thickness allowance; no tip relief,
   crowning or internal gears.
-- Simplification runs on one thread; on 2 cores the five samples take about 1.5 minutes in Release.
-- The PicoGK path compiles against the real PicoGK 2.0.0 package but was not executed in the
-  environment where this module was written (Linux); run the launcher on Windows to exercise it.
+- Simplification runs on one thread: 5 to 14 s per sample part on the Windows machine of the first
+  run, about 1.5 minutes for all five on a 2-core Linux machine.
+- `picogk-view` (the native PicoGK window) has not been exercised yet; the headless PicoGK rendering
+  and the cross-check have (first Windows run above).

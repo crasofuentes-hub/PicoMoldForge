@@ -1,3 +1,4 @@
+using PicoMoldForge.Parts.Export;
 using PicoMoldForge.Parts.Meshing;
 using PicoMoldForge.Parts.PicoGK;
 using PicoMoldForge.Parts.Recipes;
@@ -73,6 +74,13 @@ public sealed class PicoGkPartRendererTests
                 Math.Abs(render.BoundsMax.X - reference.BoundsMax.X), Math.Abs(render.BoundsMax.Y - reference.BoundsMax.Y), Math.Abs(render.BoundsMax.Z - reference.BoundsMax.Z)
             }.Max();
             Assert.InRange(worst, 0, 1.5 * voxel);
+
+            // Same topology as the reference: closed, one body, same genus (zero-area triangles dropped).
+            var picoMesh = StlReader.ReadBinary(stl);
+            var topology = MeshAnalysis.Analyze(picoMesh.Mesh);
+            Assert.True(topology.Watertight, $"PicoGK mesh not watertight ({picoMesh.DroppedDegenerateTriangles} zero-area triangles dropped)");
+            Assert.Equal(reference.Components, topology.Components);
+            Assert.Equal(reference.Genus, topology.Genus);
         }
         finally
         {
