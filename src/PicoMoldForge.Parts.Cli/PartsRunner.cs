@@ -73,6 +73,10 @@ public sealed class PartsRunner
 
         Directory.CreateDirectory(root);
 
+        // Marks the folder as a Parts output from the start, so a run that dies half way (native crash,
+        // out of memory) leaves a folder the next run can reuse or clean instead of refusing it.
+        RunManifestWriter.Write(root, command, Array.Empty<RunManifestPart>(), Array.Empty<string>(), RunManifestWriter.IncompleteStatus);
+
         var artifacts = new List<string>();
         var results = new List<(PartReport, PicoGkCrossCheck?)>();
         var generator = new PartGenerator(message => _out.WriteLine("  " + message));

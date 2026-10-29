@@ -61,9 +61,10 @@ From the repository root:
 
 The script builds the Parts projects (Release), runs their tests including the PicoGK native tests,
 generates the five sample parts with the reference mesher and the PicoGK cross-check into
-`parts-output\`, zips outputs and logs to the Desktop and opens the viewer at
-`http://127.0.0.1:8765/`. Close the viewer with Ctrl+C. Options: `-SkipTests`, `-FullBaseline`,
-`-NoViewer`, `-Port <n>`.
+`parts-output\`, zips outputs and logs into one file on the Desktop (also when the build fails),
+prints a PASS/FAIL table and opens the viewer at `http://127.0.0.1:8765/` from its own window
+(close that window to stop it). Its exit code is 0 only when every step passed. Options:
+`-SkipTests`, `-FullBaseline`, `-NoViewer`, `-Port <n>`.
 
 Manual commands (any OS with the .NET 9 SDK; PicoGK only on Windows x64 and macOS arm64):
 
@@ -90,9 +91,10 @@ Exit codes: 0 all checks passed, 1 some check failed, 2 usage or recipe error, 3
 
 Output folder safety: the output folder must be new, empty or a previous PicoMoldForge Parts output
 (recognized by its `RunManifest.json` schema); filesystem roots, the current folder, the user profile,
-Desktop, Documents and system folders are refused. `--clean-output` deletes only files that previous
-runs wrote (known file names in part folders that hold a parts report, plus the root files) and removes
-folders only when they end up empty.
+Desktop, Documents and system folders are refused. Every run writes a provisional manifest (status
+`INCOMPLETE`) before the first part, so a run that dies half way leaves a folder the next run accepts.
+`--clean-output` deletes only files that previous runs wrote (known file names in part folders that
+hold a parts report, plus the root files) and removes folders only when they end up empty.
 
 ## Recipes
 
@@ -199,10 +201,13 @@ The page loads three.js r160 from jsDelivr, so the first load needs internet acc
 
 ## PicoGK
 
-The PicoGK 2.0.0 native runtime ships for Windows x64 and macOS arm64 only. `--backend picogk` or
-`both` renders each part headless (`new Library(voxelSize)`, `Voxels(Library, IImplicit, BBox3)`,
-`mshAsMesh`, `SaveToStlFile`) and writes the cross-check; on other platforms the cross-check reports
-that the runtime is not available. `picogk-view` opens the native viewer window (`Library.Go`).
+The PicoGK 2.0.0 native runtime ships for Windows x64 and macOS arm64 only. On Windows,
+`picogk.26.1.dll` imports `MSVCP140.dll`, `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`, which the
+package does not include: the Microsoft Visual C++ 2015-2022 Redistributable (x64) must be installed.
+`--backend picogk` or `both` renders each part headless (`new Library(voxelSize)`,
+`Voxels(Library, IImplicit, BBox3)`, `mshAsMesh`, `SaveToStlFile`) and writes the cross-check; when
+the runtime cannot be loaded the cross-check fails with the reason (platform, missing file or the
+loader's error). `picogk-view` opens the native viewer window (`Library.Go`).
 
 The PicoGK native tests are opt-in so the default `dotnet test` never depends on the runtime:
 

@@ -254,7 +254,8 @@ public static class PartsCommandLine
             return 1;
         }
 
-        var log = Path.Combine(Path.GetTempPath(), "PicoMoldForge", "parts-picogk-view.log");
+        // PicoGK opens its log for exclusive writing: one file per process lets two viewers run side by side.
+        var log = Path.Combine(Path.GetTempPath(), "PicoMoldForge", FormattableString.Invariant($"parts-picogk-view-{Environment.ProcessId}.log"));
         Directory.CreateDirectory(Path.GetDirectoryName(log)!);
         output.WriteLine(FormattableString.Invariant($"Abriendo {job.Part.Title} en el visor de PicoGK (voxeles de {voxel} mm). Cierra la ventana para terminar."));
         PicoGkViewer.Show(job.Part, voxel, log);

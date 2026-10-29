@@ -25,7 +25,11 @@ public static class RunManifestWriter
     public const string FileName = "RunManifest.json";
     public const string Schema = "picomoldforge.parts-run-manifest.v1";
 
-    public static string Write(string outputRoot, string command, IReadOnlyList<RunManifestPart> parts, IEnumerable<string> artifactPaths)
+    /// <summary>Status of a manifest written before any part is generated; replaced by the final manifest.</summary>
+    public const string IncompleteStatus = "INCOMPLETE";
+
+    /// <param name="status">Overrides the computed status (PASS when every part passed, FAIL otherwise).</param>
+    public static string Write(string outputRoot, string command, IReadOnlyList<RunManifestPart> parts, IEnumerable<string> artifactPaths, string? status = null)
     {
         var root = Path.GetFullPath(outputRoot);
         var artifacts = artifactPaths
@@ -47,7 +51,7 @@ public static class RunManifestWriter
             root,
             parts,
             artifacts,
-            parts.All(p => p.Status == "PASS") ? "PASS" : "FAIL");
+            status ?? (parts.All(p => p.Status == "PASS") ? "PASS" : "FAIL"));
 
         var path = Path.Combine(root, FileName);
         File.WriteAllText(path, JsonSerializer.Serialize(manifest, ReportJson.Options), new UTF8Encoding(false));
