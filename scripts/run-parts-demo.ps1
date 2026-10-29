@@ -124,7 +124,25 @@ if (-not $hasSdk9) {
 }
 Add-Result "Herramientas" "PASS" ("dotnet en " + $dotnet.Source)
 
-# 2. Build (Release). The test projects reference the Core, PicoGK adapter and CLI projects.
+# 2. A viewer left open by an earlier run (or any other instance of the program) keeps its files
+#    open and the build cannot replace them. Close every running PicoMoldForge.Parts.Cli first.
+$running = @()
+try {
+  $running = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction Stop |
+    Where-Object { $_.CommandLine -and ($_.CommandLine.IndexOf("PicoMoldForge.Parts.Cli.dll", [System.StringComparison]::OrdinalIgnoreCase) -ge 0) })
+} catch {
+  Write-Host ("No se pudo revisar si hay un visor abierto: " + $_.Exception.Message) -ForegroundColor Yellow
+}
+foreach ($process in $running) {
+  Write-Host ("Cerrando una ejecucion anterior del programa (PID " + $process.ProcessId + "), por ejemplo un visor que quedo abierto.") -ForegroundColor Yellow
+  Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+}
+if ($running.Count -gt 0) {
+  Start-Sleep -Seconds 2
+  Add-Result "Ejecuciones anteriores" "PASS" ($running.Count.ToString() + " cerrada(s)")
+}
+
+# 3. Build (Release). The test projects reference the Core, PicoGK adapter and CLI projects.
 $buildFailed = $false
 $projects = @(
   "tests\PicoMoldForge.Parts.Core.Tests\PicoMoldForge.Parts.Core.Tests.csproj",
@@ -132,13 +150,22 @@ $projects = @(
   "tests\PicoMoldForge.Parts.Cli.Tests\PicoMoldForge.Parts.Cli.Tests.csproj"
 )
 $index = 0
+$lockedFile = $false
 foreach ($project in $projects) {
   $index++
-  $code = Invoke-Logged ("Compilar " + [System.IO.Path]::GetFileNameWithoutExtension($project)) ('dotnet build "' + (Join-Path $repoRoot $project) + '" -c Release') ("build-" + $index + ".log")
-  if ($code -ne 0) { $buildFailed = $true }
+  $logName = "build-" + $index + ".log"
+  $code = Invoke-Logged ("Compilar " + [System.IO.Path]::GetFileNameWithoutExtension($project)) ('dotnet build "' + (Join-Path $repoRoot $project) + '" -c Release') $logName
+  if ($code -ne 0) {
+    $buildFailed = $true
+    if (Select-String -LiteralPath (Join-Path $logDir $logName) -Pattern "MSB3027|MSB3021|being used by another process" -Quiet) { $lockedFile = $true }
+  }
 }
 if ($buildFailed) {
-  Add-Result "Compilacion" "FAIL" "ver logs build-*.log"
+  if ($lockedFile) {
+    Add-Result "Compilacion" "FAIL" "otro programa tiene abierto un archivo de la compilacion (el log dice cual): cierralo y vuelve a correr"
+  } else {
+    Add-Result "Compilacion" "FAIL" "ver logs build-*.log"
+  }
 } else {
   Add-Result "Compilacion" "PASS" "Release"
 }
@@ -151,7 +178,7 @@ if ($buildFailed -or -not (Test-Path -LiteralPath $cliDll)) {
   exit 1
 }
 
-# 3. Tests
+# 4. Tests
 if ($SkipTests) {
   Add-Result "Pruebas Parts" "OMITIDO" "-SkipTests"
 } else {
@@ -175,7 +202,7 @@ if ($FullBaseline) {
   if ($code -eq 0) { Add-Result "Pruebas solucion completa" "PASS" "" } else { Add-Result "Pruebas solucion completa" "FAIL" "test-solution.log" }
 }
 
-# 4. Demo: reference mesher + PicoGK cross-check. If the PicoGK run cannot finish, regenerate with the reference only.
+# 5. Demo: reference mesher + PicoGK cross-check. If the PicoGK run cannot finish, regenerate with the reference only.
 $code = Invoke-Logged "Demo (referencia + PicoGK)" ('dotnet "' + $cliDll + '" demo --backend both --clean-output --output "' + $outputDir + '"') "demo.log"
 if ($code -eq 0) {
   Add-Result "Demo referencia + PicoGK" "PASS" "5 piezas verificadas"
@@ -193,13 +220,13 @@ if (Test-Path -LiteralPath $summaryFile) {
   Get-Content -LiteralPath $summaryFile | ForEach-Object { Write-Host $_ }
 }
 
-# 5. Zip outputs and logs on the Desktop
+# 6. Zip outputs and logs on the Desktop
 Save-Zip
 
-# 6. Summary
+# 7. Summary
 $failed = Show-Summary
 
-# 7. Viewer in its own window (close that window, or press Ctrl+C in it, to stop it)
+# 8. Viewer in its own window (close that window, or press Ctrl+C in it, to stop it)
 if ((-not $NoViewer) -and (Test-Path -LiteralPath (Join-Path $outputDir "index.html"))) {
   Write-Host ""
   Write-Host ("Visor 'modo malla' en http://127.0.0.1:" + $Port + "/  (se abre en otra ventana; cierrala para terminarlo)") -ForegroundColor Cyan
