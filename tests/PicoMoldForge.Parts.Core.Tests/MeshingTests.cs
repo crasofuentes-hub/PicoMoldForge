@@ -163,6 +163,102 @@ public sealed class SdfMesherTests
 
         Assert.InRange(volume / (4.0 / 3.0 * Math.PI * 1000), 0.995, 1.005);
     }
+
+    // A block standing on a plate: the two faces only touch at z = 5, where both fields are exactly 0, and the
+    // grid (aligned with the bounds) puts samples on that face. Before FieldSign they counted as outside and
+    // split the part: an L-bracket recipe came out with genus 65 instead of 4.
+    [Theory]
+    [InlineData(0.25)]
+    [InlineData(0.5)]
+    public void TouchingFeatures_JoinIntoOneSolid(double resolution)
+    {
+        var part = new CsgSdf(new (CsgOperation, ISdf)[]
+        {
+            (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 0, 5, 0)),
+            (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(5, 2), new Vec2(15, 8)), LinearAxis.Z, 5, 10, 0))
+        });
+
+        var report = MeshAnalysis.Analyze(SdfMesher.Mesh(part, new MeshingOptions(resolution)));
+
+        Assert.True(report.Watertight);
+        Assert.Equal(1, report.Components);
+        Assert.Equal(0, report.Genus);
+        Assert.InRange(report.VolumeMm3 / ((20 * 10 * 5) + (10 * 6 * 5)), 0.98, 1.02);
+    }
+
+    // The opposite case of the tie-break: a pocket whose cutter ends exactly at the top face (field 0 on that
+    // face inside the pocket) must leave the pocket open, with no skin over it.
+    [Theory]
+    [InlineData(0.25)]
+    [InlineData(0.5)]
+    public void FlushCut_LeavesNoSkin(double resolution)
+    {
+        var part = new CsgSdf(new (CsgOperation, ISdf)[]
+        {
+            (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 0, 5, 0)),
+            (CsgOperation.Subtract, new LinearSweepSdf(new RectangleProfile(new Vec2(5, 2), new Vec2(15, 8)), LinearAxis.Z, 3, 5, 0))
+        });
+
+        var report = MeshAnalysis.Analyze(SdfMesher.Mesh(part, new MeshingOptions(resolution)));
+
+        Assert.True(report.Watertight);
+        Assert.Equal(1, report.Components);
+        Assert.Equal(0, report.Genus);
+        Assert.InRange(report.VolumeMm3 / ((20 * 10 * 5) - (10 * 6 * 2)), 0.98, 1.02);
+    }
+
+    [Fact]
+    public void VoxelVolume_CountsTouchingFeaturesOnce()
+    {
+        // Two boxes touching at z = 5.125: the cell centers (i - 0.5) * 0.25 land exactly on that face; before
+        // FieldSign they counted as outside and dropped one layer of cells (2.5 % of the volume).
+        var part = new CsgSdf(new (CsgOperation, ISdf)[]
+        {
+            (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 0, 5.125, 0)),
+            (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 5.125, 10, 0))
+        });
+
+        var volume = VoxelVolumeEstimator.EstimateVolume(part, 0.25);
+
+        Assert.InRange(volume / 2000.0, 0.995, 1.005);
+    }
+}
+
+public sealed class FieldSignTests
+{
+    private static readonly ISdf Plate = new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 0, 5, 0);
+
+    private static readonly ISdf Stack = new CsgSdf(new (CsgOperation, ISdf)[]
+    {
+        (CsgOperation.Add, Plate),
+        (CsgOperation.Add, new LinearSweepSdf(new RectangleProfile(new Vec2(0, 0), new Vec2(20, 10)), LinearAxis.Z, 5, 10, 0))
+    });
+
+    [Fact]
+    public void NonzeroValues_KeepTheirSign()
+    {
+        Assert.True(FieldSign.IsInside(Plate, new Vec3(10, 5, 2), Plate.Distance(new Vec3(10, 5, 2)), 0.25));
+        Assert.False(FieldSign.IsInside(Plate, new Vec3(10, 5, 7), Plate.Distance(new Vec3(10, 5, 7)), 0.25));
+    }
+
+    [Fact]
+    public void ZeroOnASharedFace_IsInside_AndNotABoundary()
+    {
+        var onSharedFace = new Vec3(10, 5, 5);
+
+        Assert.Equal(0, Stack.Distance(onSharedFace));
+        Assert.True(FieldSign.IsInside(Stack, onSharedFace, 0, 0.25));
+        Assert.False(FieldSign.IsBoundaryZero(Stack, onSharedFace, 0.25));
+    }
+
+    [Fact]
+    public void ZeroOnARealFace_IsABoundary()
+    {
+        var onTopFace = new Vec3(10, 5, 5);
+
+        Assert.Equal(0, Plate.Distance(onTopFace));
+        Assert.True(FieldSign.IsBoundaryZero(Plate, onTopFace, 0.25));
+    }
 }
 
 public sealed class SurfaceDistanceProbeTests

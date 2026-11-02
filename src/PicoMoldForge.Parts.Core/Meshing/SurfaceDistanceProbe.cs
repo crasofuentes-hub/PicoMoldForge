@@ -114,12 +114,14 @@ public static class SurfaceDistanceProbe
 
         var value = sdf.Distance(point);
 
-        if (value == 0)
+        // A zero is a surface point only when the two sides differ; a zero on a face shared by touching
+        // features lies inside the solid and still has to find the real surface.
+        if (value == 0 && FieldSign.IsBoundaryZero(sdf, point, searchLimitMm))
         {
             return 0;
         }
 
-        var inside = value < 0;
+        var inside = FieldSign.IsInside(sdf, point, value, searchLimitMm);
         var start = Math.Clamp(Math.Abs(value), searchLimitMm * 1e-4, searchLimitMm);
         var best = double.PositiveInfinity;
 
@@ -198,7 +200,7 @@ public static class SurfaceDistanceProbe
         var low = 0.0;
         var high = Math.Min(start, limit);
 
-        while (!Crossed(sdf.Distance(point + (direction * high)), inside))
+        while (!Crossed(sdf, point + (direction * high), inside, limit))
         {
             if (high >= limit)
             {
@@ -213,7 +215,7 @@ public static class SurfaceDistanceProbe
         {
             var middle = (low + high) / 2;
 
-            if (Crossed(sdf.Distance(point + (direction * middle)), inside))
+            if (Crossed(sdf, point + (direction * middle), inside, limit))
             {
                 high = middle;
             }
@@ -226,7 +228,9 @@ public static class SurfaceDistanceProbe
         return high;
     }
 
-    private static bool Crossed(double value, bool startedInside) => startedInside ? value >= 0 : value <= 0;
+    /// <summary>True when <paramref name="probe"/> lies on the other side; exact zeros use the FieldSign tie-break.</summary>
+    private static bool Crossed(ISdf sdf, Vec3 probe, bool startedInside, double step) =>
+        FieldSign.IsInside(sdf, probe, sdf.Distance(probe), step) != startedInside;
 
     private static double MaxFinite(double[] values)
     {
