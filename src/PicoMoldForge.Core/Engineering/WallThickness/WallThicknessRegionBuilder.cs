@@ -52,6 +52,13 @@ public sealed record WallThicknessRegion(
     int TriangleCount,
     MeshVertex Centroid);
 
+/// <summary>Regions kept, and the small regions left out (count and total area) with the area limit used.</summary>
+public sealed record WallThicknessRegionSet(
+    IReadOnlyList<WallThicknessRegion> Regions,
+    int ExcludedRegionCount,
+    double ExcludedAreaMm2,
+    double MinimumRegionAreaMm2);
+
 /// <summary>
 /// Groups wall measurements into regions: wall triangles that share an edge and fall in the same band. Shared
 /// edges are found by welding vertices with identical coordinates (STL repeats them exactly).
@@ -65,14 +72,27 @@ public static class WallThicknessRegionBuilder
         return WeightedMedian(measurements.Where(m => m.IsWall).Select(m => (m.ThicknessMm, m.AreaMm2)));
     }
 
-    public static IReadOnlyList<WallThicknessRegion> Build(
+    /// <summary>
+    /// Builds the regions and leaves out those smaller than <paramref name="minimumRegionAreaMm2"/> (default: the
+    /// thin limit squared). On real meshes, slivers at sharp edges give tiny regions with meaningless readings
+    /// (0.5 mm2 of "thin" regions on a flange whose thinnest wall is 10 mm); the left-out count and area are
+    /// returned so a report can state them instead of hiding them.
+    /// </summary>
+    public static WallThicknessRegionSet Build(
         IReadOnlyList<MeshTriangle> triangles,
         IReadOnlyList<WallThicknessMeasurement> measurements,
-        WallThicknessBands bands)
+        WallThicknessBands bands,
+        double? minimumRegionAreaMm2 = null)
     {
         ArgumentNullException.ThrowIfNull(triangles);
         ArgumentNullException.ThrowIfNull(measurements);
         ArgumentNullException.ThrowIfNull(bands);
+        var minimumArea = minimumRegionAreaMm2 ?? (bands.MinimumMm * bands.MinimumMm);
+
+        if (!(minimumArea >= 0))
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimumRegionAreaMm2), "Minimum region area cannot be negative.");
+        }
 
         if (triangles.Count != measurements.Count)
         {
@@ -142,9 +162,11 @@ public static class WallThicknessRegionBuilder
             .ThenBy(r => r.First)
             .ToList();
 
+        var small = regions.Where(r => r.Area < minimumArea).ToArray();
         var numberInBand = new Dictionary<WallThicknessBand, int>();
 
-        return regions
+        var kept = regions
+            .Where(r => r.Area >= minimumArea)
             .Select(r =>
             {
                 numberInBand[r.Band] = numberInBand.TryGetValue(r.Band, out var n) ? n + 1 : 1;
@@ -152,6 +174,8 @@ public static class WallThicknessRegionBuilder
                 return new WallThicknessRegion(id, r.Band, r.Thickness, r.Min, r.Max, r.Area, r.Count, r.Centroid);
             })
             .ToArray();
+
+        return new WallThicknessRegionSet(kept, small.Length, small.Sum(r => r.Area), minimumArea);
     }
 
     public static string BandName(WallThicknessBand band) => band switch
