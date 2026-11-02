@@ -158,6 +158,7 @@ public sealed class MeshWallThicknessSamplerTests
         Assert.Equal(5.0m, summary.MinimumObservedThicknessMm);
         Assert.Equal(5.0m, summary.MaximumObservedThicknessMm);
         Assert.Equal(0m, summary.RiskySurfaceAreaMm2);
+        Assert.Equal(400m, summary.SampledSurfaceAreaMm2);
         Assert.Contains(result.Notes, n => n.Contains("nominal wall 5.000 mm", StringComparison.Ordinal));
     }
 
@@ -172,6 +173,18 @@ public sealed class MeshWallThicknessSamplerTests
         Assert.Equal(1200m, summary.RiskySurfaceAreaMm2);
         Assert.Equal(new[] { "wall-thin-001", "wall-thin-002" }, result.ReportedRegions.Take(2).Select(r => r.RegionId));
         Assert.Contains(result.Notes, n => n.StartsWith("Thinnest wall region wall-thin-", StringComparison.Ordinal) && n.Contains("1.000 mm over 600.0 mm2", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Analysis_NamesWallsThinnerThanATenthAsProbableSlivers()
+    {
+        // A 0.05 mm thick plate of 2 x 2 mm: 4 mm2 per face, above the 1.44 mm2 region limit.
+        var mesh = TProfile().Concat(Box(10, 10, 20, 2, 2, 0.05)).ToArray();
+
+        var result = MeshWallThicknessAnalysis.Analyze(mesh, minimumThicknessMm: 1.2m, abruptChangeRatio: 0.50m);
+
+        Assert.Equal(4, result.Analysis.Summary.ThinCount);
+        Assert.Contains(result.Notes, n => n.StartsWith("2 wall regions (8.0 mm2) are thinner than 0.1 mm: probably folded slivers", StringComparison.Ordinal));
     }
 
     [Fact]

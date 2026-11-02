@@ -138,4 +138,21 @@ public sealed class VoxelWallThicknessAnalyzerTests
             AbruptChangeWarningRatio: 0.30m,
             Samples: samples);
     }
+
+    [Fact]
+    public void Summary_CarriesTheSampledArea()
+    {
+        var result = new VoxelWallThicknessAnalyzer().Analyze(new VoxelWallThicknessAnalysisInput(
+            MinimumThicknessMm: 1.0m,
+            MaximumThicknessMm: 4.0m,
+            AbruptChangeWarningRatio: 0.5m,
+            Samples: new[]
+            {
+                new VoxelWallThicknessSample("nominal", 2.0m, 2.0m, 30m),
+                new VoxelWallThicknessSample("thin", 0.8m, 2.0m, 10m)
+            }));
+
+        Assert.Equal(40m, result.Summary.SampledSurfaceAreaMm2);
+        Assert.Equal(10m, result.Summary.RiskySurfaceAreaMm2);
+    }
 }

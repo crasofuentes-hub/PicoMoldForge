@@ -78,9 +78,10 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "Gate/runner/sprue and ejector summaries are preliminary generator-derived planning metrics until their geometry is emitted as dedicated artifacts.",
             "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series.",
             "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer.",
-            "Wall thickness summary uses VoxelWallThicknessAnalyzer with generator-derived DfAM/config proxy samples; it is not yet true mesh/voxel thickness extraction.",
             "Cooling summary is routed through CoolingChannelSubtractor using CoolingChannelPlan segments, mold bounds, and configured minimum clearance."
         };
+
+        var wallThickness = CreateWallThicknessSummary(input, warnings);
 
         warnings.Add(
             $"Parting plane scorer selected {partingPlaneScoring.BestScore.Candidate.Axis} at {partingPlaneScoring.BestScore.Candidate.OffsetMm} mm with quality score {partingPlaneScoring.BestScore.QualityScore}.");
@@ -104,7 +105,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             Shutoff: shutoffSummary,
             DraftGeometry: CreateDraftGeometrySummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             Warnings: warnings,
-            WallThickness: CreateWallThicknessSummary(input, dfamReport),
+            WallThickness: wallThickness,
             UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
             CoolingChannels: CreateCoolingSummary(input, coolingPlan),
             GateRunnerSprue: CreateGateRunnerSprueSummary(input),
@@ -133,63 +134,26 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         return result.Summary;
     }
 
+    /// <summary>
+    /// Wall thickness measured on the input STL (inscribed-ball method, no PicoGK runtime) and judged against the
+    /// DfAM minimum; the measurement notes go to the report warnings.
+    /// </summary>
     private static VoxelWallThicknessAnalysisSummary CreateWallThicknessSummary(
         GeneratorPipelineInput input,
-        DfAMReport dfamReport)
+        List<string> warnings)
     {
         ArgumentNullException.ThrowIfNull(input);
-        ArgumentNullException.ThrowIfNull(dfamReport);
+        ArgumentNullException.ThrowIfNull(warnings);
+
         var minimumAllowedMm = Math.Min(
             input.DfAM.MinimumWallThicknessMm,
             input.DfAM.RecommendedMinimumWallThicknessMm);
 
-        var nominalThicknessMm = Math.Max(
-            input.DfAM.MinimumWallThicknessMm,
-            input.DfAM.RecommendedMinimumWallThicknessMm);
+        var triangles = BinaryStlTriangleReader.Read(input.ResolvedInputPath);
+        var result = MeshWallThicknessAnalysis.Analyze(triangles, minimumAllowedMm, abruptChangeRatio: 0.50m);
+        warnings.AddRange(result.Notes);
 
-        var maximumAllowedMm = Math.Max(
-            nominalThicknessMm * 3m,
-            nominalThicknessMm);
-
-        var representativeAreaMm2 = Math.Max(
-            1m,
-            (input.MoldSystem.PartSizeXmm * input.MoldSystem.PartSizeYmm) +
-            (input.MoldSystem.PartSizeXmm * input.MoldSystem.PartSizeZmm) +
-            (input.MoldSystem.PartSizeYmm * input.MoldSystem.PartSizeZmm));
-
-        var riskyDfamCheckCount = dfamReport.Checks.Count(check => !check.IsPassed);
-
-        var samples = new[]
-        {
-            new VoxelWallThicknessSample(
-                RegionId: "generator-dfam-minimum-wall-proxy",
-                ThicknessMm: input.DfAM.MinimumWallThicknessMm,
-                NominalThicknessMm: nominalThicknessMm,
-                SurfaceAreaMm2: representativeAreaMm2),
-
-            new VoxelWallThicknessSample(
-                RegionId: "generator-dfam-recommended-wall-proxy",
-                ThicknessMm: input.DfAM.RecommendedMinimumWallThicknessMm,
-                NominalThicknessMm: nominalThicknessMm,
-                SurfaceAreaMm2: representativeAreaMm2),
-
-            new VoxelWallThicknessSample(
-                RegionId: "generator-part-z-envelope-proxy",
-                ThicknessMm: Math.Max(minimumAllowedMm, Math.Min(input.MoldSystem.PartSizeZmm, nominalThicknessMm)),
-                NominalThicknessMm: nominalThicknessMm,
-                SurfaceAreaMm2: representativeAreaMm2,
-                IsCriticalToQuality: riskyDfamCheckCount > 0)
-        };
-
-        var analyzer = new VoxelWallThicknessAnalyzer();
-
-        var result = analyzer.Analyze(new VoxelWallThicknessAnalysisInput(
-            MinimumThicknessMm: minimumAllowedMm,
-            MaximumThicknessMm: maximumAllowedMm,
-            AbruptChangeWarningRatio: 0.50m,
-            Samples: samples));
-
-        return result.Summary;
+        return result.Analysis.Summary;
     }
 
     private static UndercutRiskAnalysisSummary CreateUndercutRiskSummary(

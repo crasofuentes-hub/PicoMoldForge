@@ -188,6 +188,7 @@ Additional documentation is available in:
 - docs/GENERATOR_USAGE.md
 - docs/V5_FINAL_ROADMAP_STATUS.md
 - docs/PARTS_FORGE.md
+- docs/FUNCTIONAL_MOLD_ALPHA_V2.md
 - phase status documents under docs/
 
 ## Next development track
@@ -201,11 +202,11 @@ Current completed alpha state:
 
 Next development step:
 
-Functional Mold Alpha v2 should connect more alpha metrics directly to actual generated geometry instead of approximate generator-derived summaries.
+Functional Mold Alpha v2 should connect more alpha metrics directly to actual generated geometry instead of approximate generator-derived summaries. Progress and method: docs/FUNCTIONAL_MOLD_ALPHA_V2.md.
 
 Priority order:
 
-1. derive wall thickness from generated/voxel geometry
+1. derive wall thickness from generated/voxel geometry (done: measured on the input STL)
 2. derive draft and undercut risk from actual mesh normals
 3. emit real gate/runner/sprue geometry artifacts
 4. emit real ejector geometry artifacts

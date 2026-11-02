@@ -95,9 +95,12 @@ public sealed record FunctionalMoldAlphaReport(
 
             if (WallThickness is not null)
             {
-                scores.Add(ScoreFromRiskCounts(
-                    WallThickness.SampleCount,
-                    WallThickness.ThinCount + WallThickness.ThickCount + WallThickness.AbruptChangeCount + WallThickness.InvalidCount));
+                // Measured walls come as regions whose number depends on the mesh; their area does not.
+                scores.Add(WallThickness.SampledSurfaceAreaMm2 > 0m
+                    ? ScoreFromRiskArea(WallThickness.SampledSurfaceAreaMm2, WallThickness.RiskySurfaceAreaMm2)
+                    : ScoreFromRiskCounts(
+                        WallThickness.SampleCount,
+                        WallThickness.ThinCount + WallThickness.ThickCount + WallThickness.AbruptChangeCount + WallThickness.InvalidCount));
             }
 
             if (UndercutRisk is not null)
@@ -156,6 +159,16 @@ public sealed record FunctionalMoldAlphaReport(
         if (ClearanceMatrix is null) { missing.Add("ClearanceMatrix"); }
 
         return missing;
+    }
+
+    private static decimal ScoreFromRiskArea(decimal totalAreaMm2, decimal riskyAreaMm2)
+    {
+        if (totalAreaMm2 <= 0m)
+        {
+            return 0m;
+        }
+
+        return Math.Clamp(1m - (riskyAreaMm2 / totalAreaMm2), 0m, 1m);
     }
 
     private static decimal ScoreFromRiskCounts(int totalCount, int riskyCount)
