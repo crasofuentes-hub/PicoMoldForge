@@ -58,10 +58,15 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.True(alpha.GetProperty("Separation").GetProperty("QualityScore").GetDecimal() >= 0m);
             var wallThickness = alpha.GetProperty("WallThickness");
 
-            Assert.Equal(3, wallThickness.GetProperty("SampleCount").GetInt32());
-            Assert.True(wallThickness.GetProperty("MinimumObservedThicknessMm").GetDecimal() > 0m);
-            Assert.True(wallThickness.GetProperty("MaximumObservedThicknessMm").GetDecimal() > 0m);
-            Assert.True(wallThickness.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
+            // Measured on the 20 x 10 x 5 mm box: its top and bottom faces are two 5 mm walls of 200 mm2 each.
+            Assert.Equal(2, wallThickness.GetProperty("SampleCount").GetInt32());
+            Assert.Equal(5.0m, wallThickness.GetProperty("MinimumObservedThicknessMm").GetDecimal());
+            Assert.Equal(5.0m, wallThickness.GetProperty("MaximumObservedThicknessMm").GetDecimal());
+            Assert.Equal(0m, wallThickness.GetProperty("RiskySurfaceAreaMm2").GetDecimal());
+            Assert.Equal(400m, wallThickness.GetProperty("SampledSurfaceAreaMm2").GetDecimal());
+            Assert.Contains(
+                alpha.GetProperty("Warnings").EnumerateArray().Select(w => w.GetString()),
+                w => w is not null && w.StartsWith("Wall thickness measured on the input STL", StringComparison.Ordinal));
             var draftGeometry = alpha.GetProperty("DraftGeometry");
 
             Assert.Equal(12, draftGeometry.GetProperty("FaceCount").GetInt32());

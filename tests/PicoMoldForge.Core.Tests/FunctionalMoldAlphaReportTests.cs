@@ -98,6 +98,31 @@ public sealed class FunctionalMoldAlphaReportTests
         Assert.Contains(report.Validate(), error => error.Contains("WallThickness RiskySurfaceAreaMm2", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void ReadinessScore_UsesRiskyArea_WhenTheWallSummaryHasSampledArea()
+    {
+        // Monoblock measured on its STL: 129 regions, 71 of them not nominal, but only 24.6 % of the wall area.
+        var measured = new VoxelWallThicknessAnalysisSummary(
+            SampleCount: 129, NominalCount: 58, ThinCount: 3, ThickCount: 3, AbruptChangeCount: 65, InvalidCount: 0,
+            MinimumObservedThicknessMm: 0.5934m, MaximumObservedThicknessMm: 17.3774m,
+            RiskySurfaceAreaMm2: 23790m, SampledSurfaceAreaMm2: 96825m);
+        var byCount = measured with { SampledSurfaceAreaMm2 = 0m };
+
+        var areaScore = OnlyWallThickness(measured).OverallReadinessScore;
+        var countScore = OnlyWallThickness(byCount).OverallReadinessScore;
+
+        Assert.Equal(Math.Round(1m - (23790m / 96825m), 4), Math.Round(areaScore, 4));
+        Assert.Equal(Math.Round(1m - (71m / 129m), 4), Math.Round(countScore, 4));
+    }
+
+    private static FunctionalMoldAlphaReport OnlyWallThickness(VoxelWallThicknessAnalysisSummary summary) =>
+        new(
+            Separation: null,
+            Shutoff: null,
+            DraftGeometry: null,
+            Warnings: Array.Empty<string>(),
+            WallThickness: summary);
+
     private static FunctionalMoldAlphaReport CreateCompleteReport()
     {
         return new FunctionalMoldAlphaReport(

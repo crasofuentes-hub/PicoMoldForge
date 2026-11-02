@@ -114,7 +114,8 @@ public sealed class VoxelWallThicknessAnalyzer
             InvalidCount: sampleResults.Count(sample => sample.Classification == VoxelWallThicknessClassification.Invalid),
             MinimumObservedThicknessMm: validThicknesses.Length == 0 ? 0m : validThicknesses.Min(),
             MaximumObservedThicknessMm: validThicknesses.Length == 0 ? 0m : validThicknesses.Max(),
-            RiskySurfaceAreaMm2: riskyArea);
+            RiskySurfaceAreaMm2: riskyArea,
+            SampledSurfaceAreaMm2: sampleResults.Sum(sample => sample.SurfaceAreaMm2));
     }
 
     private static EngineeringRuleResult BuildRuleResult(
