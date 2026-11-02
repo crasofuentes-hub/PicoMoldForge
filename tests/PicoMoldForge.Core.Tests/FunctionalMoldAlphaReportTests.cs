@@ -115,6 +115,41 @@ public sealed class FunctionalMoldAlphaReportTests
         Assert.Equal(Math.Round(1m - (71m / 129m), 4), Math.Round(countScore, 4));
     }
 
+    [Fact]
+    public void ReadinessScore_UsesRiskyArea_WhenTheDraftAndUndercutSummariesHaveSampledArea()
+    {
+        // Spur gear split across its axis, measured on its STL: 14 717 of 34 116 triangles are not drafted, 53 % of
+        // the area; no face is trapped.
+        var draft = new DraftBasicGeometryAnalysisSummary(
+            FaceCount: 34116, PositiveDraftCount: 19399, LowDraftCount: 1422, ZeroDraftCount: 10402,
+            NegativeDraftCount: 2890, InvalidNormalCount: 3, RiskySurfaceAreaMm2: 3890m,
+            MinimumObservedDraftDeg: 0m, SampledSurfaceAreaMm2: 7347m);
+        var undercut = new UndercutRiskAnalysisSummary(
+            FaceCount: 34116, ClearPullCount: 34113, LowPullClearanceCount: 0, SideActionCandidateCount: 0,
+            UndercutCount: 0, InvalidNormalCount: 3, RiskySurfaceAreaMm2: 0.1m, MaximumTrapDepthMm: 0m,
+            SampledSurfaceAreaMm2: 7347m);
+
+        var draftScore = Only(draft: draft).OverallReadinessScore;
+        var draftByCount = Only(draft: draft with { SampledSurfaceAreaMm2 = 0m }).OverallReadinessScore;
+        var undercutScore = Only(undercut: undercut).OverallReadinessScore;
+        var undercutByCount = Only(undercut: undercut with { SampledSurfaceAreaMm2 = 0m }).OverallReadinessScore;
+
+        Assert.Equal(Math.Round(1m - (3890m / 7347m), 4), Math.Round(draftScore, 4));
+        Assert.Equal(Math.Round(1m - (14717m / 34116m), 4), Math.Round(draftByCount, 4));
+        Assert.Equal(Math.Round(1m - (0.1m / 7347m), 4), Math.Round(undercutScore, 4));
+        Assert.Equal(Math.Round(1m - (3m / 34116m), 4), Math.Round(undercutByCount, 4));
+    }
+
+    private static FunctionalMoldAlphaReport Only(
+        DraftBasicGeometryAnalysisSummary? draft = null,
+        UndercutRiskAnalysisSummary? undercut = null) =>
+        new(
+            Separation: null,
+            Shutoff: null,
+            DraftGeometry: draft,
+            Warnings: Array.Empty<string>(),
+            UndercutRisk: undercut);
+
     private static FunctionalMoldAlphaReport OnlyWallThickness(VoxelWallThicknessAnalysisSummary summary) =>
         new(
             Separation: null,

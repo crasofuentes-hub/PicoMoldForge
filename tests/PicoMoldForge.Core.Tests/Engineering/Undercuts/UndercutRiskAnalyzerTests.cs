@@ -122,6 +122,7 @@ public sealed class UndercutRiskAnalyzerTests
         Assert.Equal(1, result.Summary.UndercutCount);
         Assert.Equal(52m, result.Summary.RiskySurfaceAreaMm2);
         Assert.Equal(2m, result.Summary.MaximumTrapDepthMm);
+        Assert.Equal(62m, result.Summary.SampledSurfaceAreaMm2);
     }
 
     private static UndercutRiskAnalysisInput CreateInput(IReadOnlyList<UndercutFaceSample> faces)

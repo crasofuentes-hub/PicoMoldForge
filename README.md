@@ -207,7 +207,7 @@ Functional Mold Alpha v2 should connect more alpha metrics directly to actual ge
 Priority order:
 
 1. derive wall thickness from generated/voxel geometry (done: measured on the input STL)
-2. derive draft and undercut risk from actual mesh normals
+2. derive draft and undercut risk from actual mesh normals (done: measured on the input STL for both mold halves)
 3. emit real gate/runner/sprue geometry artifacts
 4. emit real ejector geometry artifacts
 5. subtract cooling/ejector/gate geometry from mold halves

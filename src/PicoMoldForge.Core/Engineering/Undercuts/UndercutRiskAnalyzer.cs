@@ -108,7 +108,8 @@ public sealed class UndercutRiskAnalyzer
             UndercutCount: faceResults.Count(face => face.Classification == UndercutFaceClassification.Undercut),
             InvalidNormalCount: faceResults.Count(face => face.Classification == UndercutFaceClassification.InvalidNormal),
             RiskySurfaceAreaMm2: riskyArea,
-            MaximumTrapDepthMm: maximumTrapDepth);
+            MaximumTrapDepthMm: maximumTrapDepth,
+            SampledSurfaceAreaMm2: faceResults.Sum(face => face.SurfaceAreaMm2));
     }
 
     private static EngineeringRuleResult BuildRuleResult(

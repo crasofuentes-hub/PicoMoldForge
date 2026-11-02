@@ -160,5 +160,6 @@ public sealed class DraftBasicGeometryAnalyzerTests
         Assert.Equal(1, result.Summary.ZeroDraftCount);
         Assert.Equal(1, result.Summary.NegativeDraftCount);
         Assert.Equal(50m, result.Summary.RiskySurfaceAreaMm2);
+        Assert.Equal(60m, result.Summary.SampledSurfaceAreaMm2);
     }
 }

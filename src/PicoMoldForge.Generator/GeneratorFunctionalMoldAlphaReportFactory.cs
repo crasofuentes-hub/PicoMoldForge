@@ -4,14 +4,12 @@ using PicoMoldForge.Core.Cooling;
 using PicoMoldForge.Core.DfAM;
 using PicoMoldForge.Core.Engineering.Clearance;
 using PicoMoldForge.Core.Engineering.CoolingGeometry;
-using PicoMoldForge.Core.Engineering.DraftAnalysis;
 using PicoMoldForge.Core.Engineering.EjectionGeometry;
 using PicoMoldForge.Core.Engineering.GateSystem;
+using PicoMoldForge.Core.Engineering.MoldAccess;
 using PicoMoldForge.Core.Engineering.Separation;
-using PicoMoldForge.Core.Engineering.Undercuts;
 using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Exports;
-using PicoMoldForge.PicoGK.Analysis;
 using CorePartingAxis = PicoMoldForge.Core.Parting.PartingAxis;
 using SeparationPartingAxis = PicoMoldForge.Core.Engineering.Separation.PartingAxis;
 
@@ -77,11 +75,12 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "FunctionalMoldAlphaReport is generated from the real generator pipeline, configuration, part analysis, cooling plan, DfAM report, and generated artifact assumptions.",
             "Gate/runner/sprue and ejector summaries are preliminary generator-derived planning metrics until their geometry is emitted as dedicated artifacts.",
             "Clearance matrix summary is preliminary and should be replaced by feature-level geometry distances in the next series.",
-            "Undercut risk summary is derived from actual STL triangle normals through PicoUndercutHeuristicAnalyzer.",
             "Cooling summary is routed through CoolingChannelSubtractor using CoolingChannelPlan segments, mold bounds, and configured minimum clearance."
         };
 
-        var wallThickness = CreateWallThicknessSummary(input, warnings);
+        var triangles = BinaryStlTriangleReader.Read(input.ResolvedInputPath);
+        var wallThickness = CreateWallThicknessSummary(input, triangles, warnings);
+        var moldAccess = CreateMoldAccess(triangles, splitAxis, partingOffsetMm, warnings);
 
         warnings.Add(
             $"Parting plane scorer selected {partingPlaneScoring.BestScore.Candidate.Axis} at {partingPlaneScoring.BestScore.Candidate.OffsetMm} mm with quality score {partingPlaneScoring.BestScore.QualityScore}.");
@@ -103,35 +102,15 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         return new FunctionalMoldAlphaReport(
             Separation: separationResult.Summary,
             Shutoff: shutoffSummary,
-            DraftGeometry: CreateDraftGeometrySummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
+            DraftGeometry: moldAccess.Draft.Summary,
             Warnings: warnings,
             WallThickness: wallThickness,
-            UndercutRisk: CreateUndercutRiskSummary(input.ResolvedInputPath, partAnalysis, input.Config.VoxelResolutionMm),
+            UndercutRisk: moldAccess.Undercut,
             CoolingChannels: CreateCoolingSummary(input, coolingPlan),
             GateRunnerSprue: CreateGateRunnerSprueSummary(input),
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
             PartingPlane: partingPlaneScoring.BestScore);
-    }
-
-    private static DraftBasicGeometryAnalysisSummary CreateDraftGeometrySummary(
-        string inputPath,
-        PartAnalysisReport partAnalysis,
-        decimal voxelResolutionMm)
-    {
-        if (partAnalysis.PartingPlane is null)
-        {
-            throw new InvalidOperationException("Part analysis must include a parting plane before draft geometry analysis.");
-        }
-
-        var analyzer = new PicoDraftGeometryAnalyzer();
-        var result = analyzer.AnalyzeBinaryStl(
-            inputPath,
-            partAnalysis.PartingPlane.OpeningDirection,
-            minimumRequiredDraftDeg: 1.0m,
-            voxelSizeMm: Convert.ToSingle(voxelResolutionMm));
-
-        return result.Summary;
     }
 
     /// <summary>
@@ -140,6 +119,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
     /// </summary>
     private static VoxelWallThicknessAnalysisSummary CreateWallThicknessSummary(
         GeneratorPipelineInput input,
+        IReadOnlyList<MeshTriangle> triangles,
         List<string> warnings)
     {
         ArgumentNullException.ThrowIfNull(input);
@@ -149,45 +129,29 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             input.DfAM.MinimumWallThicknessMm,
             input.DfAM.RecommendedMinimumWallThicknessMm);
 
-        var triangles = BinaryStlTriangleReader.Read(input.ResolvedInputPath);
         var result = MeshWallThicknessAnalysis.Analyze(triangles, minimumAllowedMm, abruptChangeRatio: 0.50m);
         warnings.AddRange(result.Notes);
 
         return result.Analysis.Summary;
     }
 
-    private static UndercutRiskAnalysisSummary CreateUndercutRiskSummary(
-        string inputPath,
-        PartAnalysisReport partAnalysis,
-        decimal voxelResolutionMm)
+    /// <summary>
+    /// Draft and undercut measured on the input STL for the two halves of the split actually used for the mold
+    /// (the same axis and offset as the separation summary); the measurement notes go to the report warnings.
+    /// </summary>
+    private static MeshMoldAccessAnalysisResult CreateMoldAccess(
+        IReadOnlyList<MeshTriangle> triangles,
+        SeparationPartingAxis splitAxis,
+        decimal partingOffsetMm,
+        List<string> warnings)
     {
-        if (partAnalysis.PartingPlane is null)
-        {
-            throw new InvalidOperationException("Part analysis must include a parting plane before undercut risk analysis.");
-        }
+        ArgumentNullException.ThrowIfNull(triangles);
+        ArgumentNullException.ThrowIfNull(warnings);
 
-        var analyzer = new PicoUndercutHeuristicAnalyzer();
-        var result = analyzer.AnalyzeBinaryStl(
-            inputPath,
-            partAnalysis.PartingPlane.OpeningDirection,
-            voxelSizeMm: Convert.ToSingle(voxelResolutionMm));
+        var result = MeshMoldAccessAnalysis.Analyze(triangles, splitAxis, partingOffsetMm, minimumDraftDeg: 1.0m);
+        warnings.AddRange(result.Notes);
 
-        var faceCount = Math.Max(result.TotalTriangleCount, 1);
-        var sideActionCandidateCount = Math.Max(0, result.OpposingNormalTriangleCount);
-        var clearPullCount = Math.Max(0, faceCount - sideActionCandidateCount);
-        var riskySurfaceAreaMm2 = sideActionCandidateCount == 0
-            ? 0m
-            : Math.Max(1m, Convert.ToDecimal(partAnalysis.VoxelizedVolumeCubicMm) * Convert.ToDecimal(result.OpposingNormalRatio));
-
-        return new UndercutRiskAnalysisSummary(
-            FaceCount: faceCount,
-            ClearPullCount: clearPullCount,
-            LowPullClearanceCount: 0,
-            SideActionCandidateCount: sideActionCandidateCount,
-            UndercutCount: 0,
-            InvalidNormalCount: 0,
-            RiskySurfaceAreaMm2: riskySurfaceAreaMm2,
-            MaximumTrapDepthMm: sideActionCandidateCount == 0 ? 0m : 1m);
+        return result;
     }
 
     private static CoolingChannelSubtractionSummary CreateCoolingSummary(
