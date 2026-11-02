@@ -148,7 +148,8 @@ public sealed class DraftBasicGeometryAnalyzer
             NegativeDraftCount: faceResults.Count(face => face.Classification == DraftFaceClassification.NegativeDraft),
             InvalidNormalCount: faceResults.Count(face => face.Classification == DraftFaceClassification.InvalidNormal),
             RiskySurfaceAreaMm2: riskyArea,
-            MinimumObservedDraftDeg: minimumObservedDraft);
+            MinimumObservedDraftDeg: minimumObservedDraft,
+            SampledSurfaceAreaMm2: faceResults.Sum(face => face.SurfaceAreaMm2));
     }
 
     private static EngineeringRuleResult BuildRuleResult(

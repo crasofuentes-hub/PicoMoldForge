@@ -69,14 +69,27 @@ public sealed class GeneratorEndToEndPipelineTests
                 w => w is not null && w.StartsWith("Wall thickness measured on the input STL", StringComparison.Ordinal));
             var draftGeometry = alpha.GetProperty("DraftGeometry");
 
+            // Split across X (the longest side): each half opens away from the plane, so the two end faces have
+            // 90 deg of draft against their own half and the other four faces (600 of 700 mm2) have none.
             Assert.Equal(12, draftGeometry.GetProperty("FaceCount").GetInt32());
-            Assert.True(draftGeometry.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
+            Assert.Equal(4, draftGeometry.GetProperty("PositiveDraftCount").GetInt32());
+            Assert.Equal(8, draftGeometry.GetProperty("ZeroDraftCount").GetInt32());
+            Assert.Equal(0, draftGeometry.GetProperty("NegativeDraftCount").GetInt32());
+            Assert.Equal(600m, draftGeometry.GetProperty("RiskySurfaceAreaMm2").GetDecimal());
+            Assert.Equal(700m, draftGeometry.GetProperty("SampledSurfaceAreaMm2").GetDecimal());
             Assert.True(draftGeometry.GetProperty("MinimumObservedDraftDeg").GetDecimal() >= 0m);
             var undercutRisk = alpha.GetProperty("UndercutRisk");
 
+            // A box has no undercut: every face releases along the opening direction of its half.
             Assert.Equal(12, undercutRisk.GetProperty("FaceCount").GetInt32());
-            Assert.True(undercutRisk.GetProperty("RiskySurfaceAreaMm2").GetDecimal() >= 0m);
+            Assert.Equal(12, undercutRisk.GetProperty("ClearPullCount").GetInt32());
+            Assert.Equal(0, undercutRisk.GetProperty("UndercutCount").GetInt32());
+            Assert.Equal(0m, undercutRisk.GetProperty("RiskySurfaceAreaMm2").GetDecimal());
+            Assert.Equal(700m, undercutRisk.GetProperty("SampledSurfaceAreaMm2").GetDecimal());
             Assert.True(undercutRisk.GetProperty("MaximumTrapDepthMm").GetDecimal() >= 0m);
+            Assert.Contains(
+                alpha.GetProperty("Warnings").EnumerateArray().Select(w => w.GetString()),
+                w => w is not null && w.StartsWith("Draft and undercut measured on the input STL for a two-half mold split by the plane X = ", StringComparison.Ordinal));
             Assert.True(
                 undercutRisk.GetProperty("ClearPullCount").GetInt32() +
                 undercutRisk.GetProperty("LowPullClearanceCount").GetInt32() +

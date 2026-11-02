@@ -88,9 +88,12 @@ public sealed record FunctionalMoldAlphaReport(
 
             if (DraftGeometry is not null)
             {
-                scores.Add(ScoreFromRiskCounts(
-                    DraftGeometry.FaceCount,
-                    DraftGeometry.LowDraftCount + DraftGeometry.ZeroDraftCount + DraftGeometry.NegativeDraftCount + DraftGeometry.InvalidNormalCount));
+                // Faces are mesh triangles: their number depends on the tessellation, their area does not.
+                scores.Add(DraftGeometry.SampledSurfaceAreaMm2 > 0m
+                    ? ScoreFromRiskArea(DraftGeometry.SampledSurfaceAreaMm2, DraftGeometry.RiskySurfaceAreaMm2)
+                    : ScoreFromRiskCounts(
+                        DraftGeometry.FaceCount,
+                        DraftGeometry.LowDraftCount + DraftGeometry.ZeroDraftCount + DraftGeometry.NegativeDraftCount + DraftGeometry.InvalidNormalCount));
             }
 
             if (WallThickness is not null)
@@ -105,9 +108,11 @@ public sealed record FunctionalMoldAlphaReport(
 
             if (UndercutRisk is not null)
             {
-                scores.Add(ScoreFromRiskCounts(
-                    UndercutRisk.FaceCount,
-                    UndercutRisk.LowPullClearanceCount + UndercutRisk.SideActionCandidateCount + UndercutRisk.UndercutCount + UndercutRisk.InvalidNormalCount));
+                scores.Add(UndercutRisk.SampledSurfaceAreaMm2 > 0m
+                    ? ScoreFromRiskArea(UndercutRisk.SampledSurfaceAreaMm2, UndercutRisk.RiskySurfaceAreaMm2)
+                    : ScoreFromRiskCounts(
+                        UndercutRisk.FaceCount,
+                        UndercutRisk.LowPullClearanceCount + UndercutRisk.SideActionCandidateCount + UndercutRisk.UndercutCount + UndercutRisk.InvalidNormalCount));
             }
 
             if (CoolingChannels is not null)

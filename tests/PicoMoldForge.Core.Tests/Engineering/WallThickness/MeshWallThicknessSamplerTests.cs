@@ -220,7 +220,7 @@ public sealed class MeshWallThicknessSamplerTests
     /// Closed prism: a counterclockwise polygon in the (x, z) plane extruded from y = 0 to y = depth. The cap
     /// triangles index the polygon counterclockwise; side quads are split into two triangles.
     /// </summary>
-    private static IReadOnlyList<MeshTriangle> Extrude(IReadOnlyList<(double X, double Z)> polygon, double depth, IReadOnlyList<(int, int, int)> cap)
+    internal static IReadOnlyList<MeshTriangle> Extrude(IReadOnlyList<(double X, double Z)> polygon, double depth, IReadOnlyList<(int, int, int)> cap)
     {
         MeshVertex V((double X, double Z) p, double y) => new(p.X, y, p.Z);
         var triangles = new List<MeshTriangle>();
@@ -243,7 +243,7 @@ public sealed class MeshWallThicknessSamplerTests
     }
 
     /// <summary>Closed axis-aligned box with its minimum corner at (x, y, z), outward winding.</summary>
-    private static IEnumerable<MeshTriangle> Box(double x, double y, double z, double sx, double sy, double sz)
+    internal static IEnumerable<MeshTriangle> Box(double x, double y, double z, double sx, double sy, double sz)
     {
         MeshVertex Move(MeshVertex v) => new(v.X + x, v.Y + y, v.Z + z);
         return GeneratorTestBox(sx, sy, sz).Select(t => new MeshTriangle(Move(t.A), Move(t.B), Move(t.C)));

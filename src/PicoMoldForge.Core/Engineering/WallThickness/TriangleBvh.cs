@@ -211,6 +211,55 @@ internal sealed class TriangleBvh
         return best;
     }
 
+    /// <summary>
+    /// First triangle hit along the ray, skipping <paramref name="excludedTriangle"/> (original index, or -1 for
+    /// none): its distance and original index, or (+infinity, -1) when the ray misses.
+    /// </summary>
+    public (double Distance, int Triangle) RayHit(Vec3d origin, Vec3d direction, int excludedTriangle)
+    {
+        var best = double.PositiveInfinity;
+        var bestTriangle = -1;
+        Span<int> stack = stackalloc int[MaxStack];
+        var top = 0;
+        stack[top++] = 0;
+
+        while (top > 0)
+        {
+            var node = _nodes[stack[--top]];
+
+            if (!RayHitsBox(origin, direction, node.Min, node.Max, best))
+            {
+                continue;
+            }
+
+            if (node.Left < 0)
+            {
+                for (var i = node.Start; i < node.Start + node.Count; i++)
+                {
+                    if (_original[i] == excludedTriangle)
+                    {
+                        continue;
+                    }
+
+                    var t = RayTriangle(origin, direction, _a[i], _b[i], _c[i]);
+
+                    if (t > 1e-12 && t < best)
+                    {
+                        best = t;
+                        bestTriangle = _original[i];
+                    }
+                }
+
+                continue;
+            }
+
+            stack[top++] = node.Left;
+            stack[top++] = node.Right;
+        }
+
+        return (best, bestTriangle);
+    }
+
     private int Build(IReadOnlyList<MeshTriangle> triangles, int[] order, Vec3d[] centroids, int start, int count)
     {
         double minX = double.PositiveInfinity, minY = double.PositiveInfinity, minZ = double.PositiveInfinity;
