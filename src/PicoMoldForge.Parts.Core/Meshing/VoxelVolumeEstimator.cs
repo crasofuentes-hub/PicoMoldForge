@@ -6,7 +6,8 @@ namespace PicoMoldForge.Parts.Meshing;
 /// <summary>
 /// Independent volume estimate: counts cell centers inside the solid (sign of the distance only, no
 /// triangles). Used to cross-check the mesh volume, so a mesher defect cannot validate itself.
-/// Deterministic (integer counts).
+/// Deterministic (integer counts). Like the mesher, exact zeros are classified with <see cref="FieldSign"/>,
+/// so a face shared by touching features counts as inside.
 /// </summary>
 public static class VoxelVolumeEstimator
 {
@@ -61,7 +62,7 @@ public static class VoxelVolumeEstimator
                     {
                         var p = bounds.Min + new Vec3((i0 + i + 0.5) * h, (j0 + j + 0.5) * h, (k0 + k + 0.5) * h);
 
-                        if (sdf.Distance(p) < 0)
+                        if (FieldSign.IsInside(sdf, p, sdf.Distance(p), h))
                         {
                             count++;
                         }

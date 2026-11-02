@@ -30,6 +30,9 @@ public sealed record MeshingOptions(double ResolutionMm, int BlockCells = 8, int
 /// Reference mesher: marching cubes on a regular grid, evaluated only in blocks that can contain the surface
 /// (|distance at block center| &lt;= Lipschitz * half diagonal). Vertices are keyed by grid edge, so shared
 /// vertices are welded exactly and the output is deterministic regardless of thread scheduling.
+/// The grid is aligned with the part bounds, so samples often land exactly on faces at round coordinates
+/// (which keeps axis-aligned edges sharp); samples are classified with <see cref="FieldSign"/>, so a face shared
+/// by touching features, where the field is exactly 0, stays inside the solid.
 /// </summary>
 public static class SdfMesher
 {
@@ -111,6 +114,7 @@ public static class SdfMesher
         var sy = cy + 1;
         var sz = cz + 1;
         var values = new double[sx * sy * sz];
+        var inside = new bool[sx * sy * sz];
         var anyInside = false;
         var anyOutside = false;
 
@@ -120,10 +124,13 @@ public static class SdfMesher
             {
                 for (var i = 0; i < sx; i++)
                 {
-                    var value = sdf.Distance(origin + new Vec3((i0 + i) * h, (j0 + j) * h, (k0 + k) * h));
-                    values[(((k * sy) + j) * sx) + i] = value;
+                    var point = origin + new Vec3((i0 + i) * h, (j0 + j) * h, (k0 + k) * h);
+                    var value = sdf.Distance(point);
+                    var index = (((k * sy) + j) * sx) + i;
+                    values[index] = value;
+                    inside[index] = FieldSign.IsInside(sdf, point, value, h);
 
-                    if (value < 0)
+                    if (inside[index])
                     {
                         anyInside = true;
                     }
@@ -154,10 +161,10 @@ public static class SdfMesher
 
                     for (var c = 0; c < 8; c++)
                     {
-                        var value = values[((((k + MarchingCubesTables.CornerZ[c]) * sy) + j + MarchingCubesTables.CornerY[c]) * sx) + i + MarchingCubesTables.CornerX[c]];
-                        corner[c] = value;
+                        var index = ((((k + MarchingCubesTables.CornerZ[c]) * sy) + j + MarchingCubesTables.CornerY[c]) * sx) + i + MarchingCubesTables.CornerX[c];
+                        corner[c] = values[index];
 
-                        if (value < 0)
+                        if (inside[index])
                         {
                             cubeCase |= 1 << c;
                         }
@@ -179,9 +186,12 @@ public static class SdfMesher
 
                         if (!positions.ContainsKey(key))
                         {
+                            // Inside corners hold values <= 0 and outside corners values >= 0 (FieldSign), so the
+                            // crossing lies between them; two exact zeros split by the tie-break meet halfway.
                             var va = corner[a];
                             var vb = corner[b];
-                            var fraction = Math.Clamp(va / (va - vb), InterpolationClamp, 1 - InterpolationClamp);
+                            var denominator = va - vb;
+                            var fraction = denominator == 0 ? 0.5 : Math.Clamp(va / denominator, InterpolationClamp, 1 - InterpolationClamp);
                             var pa = origin + new Vec3(gi * h, gj * h, gk * h);
                             var direction = MarchingCubesTables.EdgeDirection[edge];
                             var offset = fraction * h;
