@@ -20,7 +20,8 @@ public sealed record FunctionalMoldAlphaReport(
     GateRunnerSprueGenerationSummary? GateRunnerSprue = null,
     EjectorCandidateGenerationSummary? EjectorCandidates = null,
     ClearanceCollisionMatrixSummary? ClearanceMatrix = null,
-    PartingPlaneScore? PartingPlane = null)
+    PartingPlaneScore? PartingPlane = null,
+    MoldBlockFitSummary? MoldBlockFit = null)
 {
     public IReadOnlyList<string> Validate()
     {

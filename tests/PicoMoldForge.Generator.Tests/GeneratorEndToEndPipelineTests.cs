@@ -127,7 +127,7 @@ public sealed class GeneratorEndToEndPipelineTests
         }
     }
 
-    private static void WriteProjectConfig(string path, string inputPath, string outputDirectory)
+    internal static void WriteProjectConfig(string path, string inputPath, string outputDirectory, string extraJson = "")
     {
         File.WriteAllText(path, $$"""
         {
@@ -187,7 +187,7 @@ public sealed class GeneratorEndToEndPipelineTests
             "ventDepthMm": 0.1,
             "insertClearanceMm": 2
           },
-          "dfam": {
+          {{extraJson}}"dfam": {
             "minimumWallThicknessMm": 1.5,
             "recommendedMinimumWallThicknessMm": 1.2,
             "usesPreliminaryGeometry": true
@@ -196,7 +196,7 @@ public sealed class GeneratorEndToEndPipelineTests
         """);
     }
 
-    private static void WriteBinaryBoxStl(string path, float sizeX, float sizeY, float sizeZ)
+    internal static void WriteBinaryBoxStl(string path, float sizeX, float sizeY, float sizeZ)
     {
         using var stream = File.Create(path);
         using var writer = new BinaryWriter(stream);

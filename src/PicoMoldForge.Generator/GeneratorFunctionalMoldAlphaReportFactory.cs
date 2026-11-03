@@ -10,7 +10,6 @@ using PicoMoldForge.Core.Engineering.MoldAccess;
 using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Exports;
-using CorePartingAxis = PicoMoldForge.Core.Parting.PartingAxis;
 using SeparationPartingAxis = PicoMoldForge.Core.Engineering.Separation.PartingAxis;
 
 namespace PicoMoldForge.Generator;
@@ -21,7 +20,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         GeneratorPipelineInput input,
         PartAnalysisReport partAnalysis,
         CoolingChannelPlan coolingPlan,
-        DfAMReport dfamReport)
+        DfAMReport dfamReport,
+        GeneratorMoldPlan? plan = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(partAnalysis);
@@ -32,13 +32,17 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             throw new InvalidOperationException("Part analysis must include a parting plane before FunctionalMoldAlphaReport generation.");
         }
 
+        plan ??= GeneratorMoldPlanner.Plan(input, partAnalysis.PartingPlane);
+
         var moldBounds = ToSeparationBounds(input.BooleanMoldBlockBounds);
-        var partBounds = CreateApproximatePartBounds(input.BooleanMoldBlockBounds, input.MoldSystem);
-        var splitAxis = ToSeparationAxis(input.PartingOverride?.Axis ?? partAnalysis.PartingPlane.Axis);
-        var partingOffsetMm = ResolveSafePartingOffset(
-            input.PartingOverride?.OffsetMm ?? Convert.ToDecimal(partAnalysis.PartingPlane.PlaneOffsetMm),
-            moldBounds,
-            splitAxis);
+
+        // The part measured on its STL; a part outside the block keeps the configured size here (the separation
+        // engine needs a part inside the block) and the block-fit summary reports the failure.
+        var partBounds = plan.BlockFit.IsPartInsideBlock
+            ? plan.PartBounds
+            : CreateApproximatePartBounds(input.BooleanMoldBlockBounds, input.MoldSystem);
+        var splitAxis = plan.SeparationAxis;
+        var partingOffsetMm = ResolveSafePartingOffset(plan.PartingOffsetMm, moldBounds, splitAxis);
 
         var partingPlaneScorer = new PartingPlaneScorer();
         var partingPlaneScoring = partingPlaneScorer.Score(new PartingPlaneScoringInput(
@@ -64,7 +68,7 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
                     RegionId: "generator-parting-line",
                     RegionType: ShutoffRegionType.PartingLine,
                     ClosureState: ShutoffClosureState.Preliminary,
-                    ContactAreaMm2: Math.Max(1m, input.MoldSystem.PartSizeXmm * input.MoldSystem.PartSizeYmm),
+                    ContactAreaMm2: Math.Max(1m, Footprint(partBounds, splitAxis)),
                     GapMm: 0m,
                     OverlapMm: 0m,
                     IsCriticalToQuality: true)
@@ -78,7 +82,9 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             "Cooling summary is routed through CoolingChannelSubtractor using CoolingChannelPlan segments, mold bounds, and configured minimum clearance."
         };
 
-        var triangles = BinaryStlTriangleReader.Read(input.ResolvedInputPath);
+        warnings.AddRange(plan.Notes);
+
+        var triangles = plan.Triangles;
         var wallThickness = CreateWallThicknessSummary(input, triangles, warnings);
         var moldAccess = CreateMoldAccess(triangles, splitAxis, partingOffsetMm, warnings);
 
@@ -110,7 +116,20 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             GateRunnerSprue: CreateGateRunnerSprueSummary(input),
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
-            PartingPlane: partingPlaneScoring.BestScore);
+            PartingPlane: partingPlaneScoring.BestScore,
+            MoldBlockFit: plan.BlockFit);
+    }
+
+    /// <summary>Area of the part bounds seen along the split axis.</summary>
+    private static decimal Footprint(MoldSeparationBounds bounds, SeparationPartingAxis axis)
+    {
+        return axis switch
+        {
+            SeparationPartingAxis.X => bounds.SizeYmm * bounds.SizeZmm,
+            SeparationPartingAxis.Y => bounds.SizeZmm * bounds.SizeXmm,
+            SeparationPartingAxis.Z => bounds.SizeXmm * bounds.SizeYmm,
+            _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
+        };
     }
 
     /// <summary>
@@ -298,17 +317,6 @@ private static EjectorCandidateGenerationSummary CreateEjectorSummary(GeneratorP
             centerX + (sizeX / 2m),
             centerY + (sizeY / 2m),
             centerZ + (sizeZ / 2m));
-    }
-
-    private static SeparationPartingAxis ToSeparationAxis(CorePartingAxis axis)
-    {
-        return axis switch
-        {
-            CorePartingAxis.X => SeparationPartingAxis.X,
-            CorePartingAxis.Y => SeparationPartingAxis.Y,
-            CorePartingAxis.Z => SeparationPartingAxis.Z,
-            _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
-        };
     }
 
     private static decimal ResolveSafePartingOffset(
