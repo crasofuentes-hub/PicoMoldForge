@@ -1,0 +1,26 @@
+# Line endings: LF in the repository and in working copies on every platform.
+* text=auto eol=lf
+
+# Visual Studio solution files keep CRLF.
+*.sln text eol=crlf
+
+# Binary files: never converted (a binary STL can lack the NUL byte Git uses to detect binaries).
+*.stl binary
+*.3mf binary
+*.glb binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.exe binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.wav binary
+*.mp4 binary
