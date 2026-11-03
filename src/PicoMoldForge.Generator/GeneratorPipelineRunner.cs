@@ -54,6 +54,8 @@ public sealed class GeneratorPipelineRunner
             throw new InvalidOperationException("Part analysis did not produce a parting plane.");
         }
 
+        var moldPlan = GeneratorMoldPlanner.Plan(input, partAnalysis.PartingPlane);
+
         var diagnosticExporter = new PicoDiagnosticMeshExporter();
         diagnosticExporter.ExportVoxelizedDiagnosticMesh(
             input.ResolvedInputPath,
@@ -79,8 +81,8 @@ public sealed class GeneratorPipelineRunner
             SourcePath: input.ResolvedInputPath,
             OutputDirectory: input.ResolvedOutputDirectory,
             BlockBounds: input.BooleanMoldBlockBounds,
-            SplitAxis: ResolveSplitAxis(input, partAnalysis.PartingPlane),
-            PartingPlaneOffsetMm: ResolvePartingPlaneOffset(input, partAnalysis.PartingPlane),
+            SplitAxis: moldPlan.SplitAxis,
+            PartingPlaneOffsetMm: moldPlan.PartingOffsetMm,
             VoxelSizeMm: voxelSizeMm));
 
         var coolingRequest = CreateCoolingRequest(input);
@@ -135,7 +137,8 @@ public sealed class GeneratorPipelineRunner
             input,
             partAnalysis,
             coolingPlan,
-            dfamReport);
+            dfamReport,
+            moldPlan);
         var finalReport = reportBuilder.Build(
             projectName: input.Config.ProjectName,
             manifest: manifest,
@@ -182,19 +185,6 @@ public sealed class GeneratorPipelineRunner
     }
 
 
-    private static Core.Parting.PartingAxis ResolveSplitAxis(
-        GeneratorPipelineInput input,
-        Core.Parting.PartingPlaneResult automaticPartingPlane)
-    {
-        return input.PartingOverride?.Axis ?? automaticPartingPlane.Axis;
-    }
-
-    private static decimal ResolvePartingPlaneOffset(
-        GeneratorPipelineInput input,
-        Core.Parting.PartingPlaneResult automaticPartingPlane)
-    {
-        return input.PartingOverride?.OffsetMm ?? Convert.ToDecimal(automaticPartingPlane.PlaneOffsetMm);
-    }
     private static CoolingChannelRequest CreateCoolingRequest(GeneratorPipelineInput input)
     {
         return new CoolingChannelRequest(
