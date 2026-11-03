@@ -107,7 +107,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["Auto", "Manual"]
+          "enum": ["Auto", "Manual", "Geometry"]
         },
         "axis": {
           "type": "string",

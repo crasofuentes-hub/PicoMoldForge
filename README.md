@@ -189,6 +189,7 @@ Additional documentation is available in:
 - docs/V5_FINAL_ROADMAP_STATUS.md
 - docs/PARTS_FORGE.md
 - docs/FUNCTIONAL_MOLD_ALPHA_V2.md
+- docs/FUNCTIONAL_MOLD_PLAN.md
 - phase status documents under docs/
 
 ## Next development track
@@ -202,7 +203,7 @@ Current completed alpha state:
 
 Next development step:
 
-Functional Mold Alpha v2 should connect more alpha metrics directly to actual generated geometry instead of approximate generator-derived summaries. Progress and method: docs/FUNCTIONAL_MOLD_ALPHA_V2.md.
+Functional Mold Alpha v2 should connect more alpha metrics directly to actual generated geometry instead of approximate generator-derived summaries. Progress and method: docs/FUNCTIONAL_MOLD_ALPHA_V2.md. The phases to a functional mold (F0 to F8) and their status: docs/FUNCTIONAL_MOLD_PLAN.md.
 
 Priority order:
 
@@ -234,6 +235,12 @@ Manual mode:
       "mode": "Manual",
       "axis": "X",
       "offsetMm": 10.0
+    }
+
+Geometry mode (the split with the least trapped area, found on the part mesh; see docs/GENERATOR_USAGE.md):
+
+    "parting": {
+      "mode": "Geometry"
     }
 
 Supported manual axes:

@@ -280,7 +280,7 @@ public sealed class MeshMoldAccessAnalyzerTests
     /// <summary>
     /// Stem 10 x 10 mm (x 10..20, z 0..10) under a 30 x 5 mm cap (z 10..15), extruded 10 mm along Y.
     /// </summary>
-    private static IReadOnlyList<MeshTriangle> TShape() => MeshWallThicknessSamplerTests.Extrude(
+    internal static IReadOnlyList<MeshTriangle> TShape() => MeshWallThicknessSamplerTests.Extrude(
         new[] { (10.0, 0.0), (20.0, 0.0), (20.0, 10.0), (30.0, 10.0), (30.0, 15.0), (0.0, 15.0), (0.0, 10.0), (10.0, 10.0) },
         10,
         new[] { (0, 1, 2), (0, 2, 7), (5, 6, 7), (5, 7, 2), (5, 2, 3), (5, 3, 4) });
@@ -295,7 +295,7 @@ public sealed class MeshMoldAccessAnalyzerTests
     /// 20 x 20 x 10 mm block with an 8 x 8 mm hole along Z (x and y 6..14). Triangles 0-7: outer walls, 8-15: hole
     /// walls, 16-23: top, 24-31: bottom.
     /// </summary>
-    private static IReadOnlyList<MeshTriangle> SquareFrame()
+    internal static IReadOnlyList<MeshTriangle> SquareFrame()
     {
         const double h = 10;
         var outer = new[] { (0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0) };

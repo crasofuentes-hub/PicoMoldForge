@@ -48,6 +48,40 @@ public sealed class GeneratorMoldPlanTests
     }
 
     [Fact]
+    public void Plan_Auto_ReportsThePlaneFoundByGeometryNextToThePlaneInUse()
+    {
+        using var project = TestProject.Create();
+
+        var plan = GeneratorMoldPlanner.Plan(project.Input, TestProject.AutomaticPlane(project.Input));
+
+        Assert.Equal(PartingAxis.X, plan.SplitAxis);
+        Assert.Contains("Parting plane by geometry: Z = 0 mm (flat face level): 0.0 % of the surface trapped, 42.9 % with less than 1 deg of draft.", plan.Notes);
+        Assert.Contains("Plane in use: X = 10 mm (Auto (bounding-box centre)): 0.0 % trapped, 85.7 % with less than 1 deg of draft.", plan.Notes);
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("Set \"parting\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_Geometry_SplitsAtThePlaneFoundOnTheMesh()
+    {
+        using var project = TestProject.Create(extraJson: "\"parting\": { \"mode\": \"Geometry\" },\n          ");
+
+        var plan = GeneratorMoldPlanner.Plan(project.Input, TestProject.AutomaticPlane(project.Input));
+        var report = project.CreateReport();
+
+        Assert.True(project.Input.PartingByGeometry);
+        Assert.Equal(PartingAxis.Z, plan.SplitAxis);
+        Assert.Equal(0m, plan.PartingOffsetMm);
+        Assert.Equal("Geometry", plan.PartingSource);
+        Assert.Contains("Split by geometry (parting.mode Geometry).", plan.Notes);
+
+        // Split on the bottom face: top and bottom open along their normals, the four walls lack draft.
+        Assert.Equal(4, report.DraftGeometry!.PositiveDraftCount);
+        Assert.Equal(300m, report.DraftGeometry.RiskySurfaceAreaMm2);
+        Assert.Equal(0m, report.UndercutRisk!.RiskySurfaceAreaMm2);
+        Assert.Contains(report.Warnings, w => w.StartsWith("Draft and undercut measured on the input STL for a two-half mold split by the plane Z = 0 mm", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Report_OfAPartOutsideTheBlock_SaysSoAndStillCompletes()
     {
         using var project = TestProject.Create(offsetX: 200f);
