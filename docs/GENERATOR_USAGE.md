@@ -171,6 +171,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-genera
 6. Add real user STL sample workflow documentation.
 7. Add installer or release packaging.
 
+## resin configuration
+
+The optional resin section gives the resin the part is molded in. Its shrinkage sizes the cavity: the part is scaled
+by 1 + shrinkageRate about its bounding-box centre (ShrinkageScaledPart.stl) and the mold halves are cut around it.
+
+    "resin": {
+      "name": "ABS",
+      "shrinkageRate": 0.006
+    }
+
+- name is required; for ABS, PP, PC, PA (nylon), POM and PE the shrinkageRate may be omitted and the recommended
+  rate is used (ABS 0.5 %, PP 1.8 %, PC 0.6 %, PA 1.5 %, POM 2.0 %, PE 2.2 %);
+- shrinkageRate must be between 0 and 0.1; a rate outside the typical range of a known resin is reported;
+- without resin, material.shrinkageRate is used.
+
 ## parting configuration
 
 The project JSON may include an optional parting section.

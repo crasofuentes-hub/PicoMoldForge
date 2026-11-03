@@ -44,6 +44,7 @@ public sealed class GeneratorPipelineInputValidator
 
         var partingOverride = LoadPartingOverride(document, moldBlockBounds);
         var partingByGeometry = IsPartingByGeometry(document);
+        var resin = LoadResin(document);
 
         var cooling = LoadCoolingConfig(document);
         var coolingErrors = cooling.Validate();
@@ -121,7 +122,47 @@ public sealed class GeneratorPipelineInputValidator
             lattice,
             moldSystem,
             dfam,
-            partingByGeometry);
+            partingByGeometry,
+            resin);
+    }
+
+    /// <summary>Optional resin section: name (required) and shrinkageRate (0 to 0.1; optional for a known resin).</summary>
+    private static GeneratorResinConfig? LoadResin(JsonDocument document)
+    {
+        if (!document.RootElement.TryGetProperty("resin", out var resin))
+        {
+            return null;
+        }
+
+        if (resin.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException("resin must be an object with a name and an optional shrinkageRate.");
+        }
+
+        var name = ReadRequiredString(resin, "name");
+        decimal? rate = null;
+
+        if (resin.TryGetProperty("shrinkageRate", out var rateElement))
+        {
+            if (rateElement.ValueKind != JsonValueKind.Number || !rateElement.TryGetDecimal(out var value))
+            {
+                throw new InvalidOperationException("resin.shrinkageRate must be a number.");
+            }
+
+            if (value < 0m || value > 0.1m)
+            {
+                throw new InvalidOperationException("resin.shrinkageRate must be between 0 and 0.1.");
+            }
+
+            rate = value;
+        }
+
+        if (rate is null && !PicoMoldForge.Core.Engineering.Shrinkage.MoldShrinkageResolver.TryParseResin(name, out _))
+        {
+            throw new InvalidOperationException($"resin.shrinkageRate is required for resin '{name}' (known resins without a rate: ABS, PP, PC, PA, POM, PE).");
+        }
+
+        return new GeneratorResinConfig(name, rate);
     }
 
     private static GeneratorDfamConfig LoadDfamConfig(JsonDocument document)
