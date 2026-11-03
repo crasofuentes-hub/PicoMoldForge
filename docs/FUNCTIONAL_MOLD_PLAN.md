@@ -9,7 +9,7 @@ the Functional Mold Alpha v2 priorities (docs/FUNCTIONAL_MOLD_ALPHA_V2.md).
 |-------|------|---------------------------------------------|-------------|--------|
 | F0 | The measured part through the pipeline; line-ending policy | 20 x 10 x 5 mm box -> separation and scorer use 0-20 / 0-10 / 0-5; a block that does not contain the part -> FAIL "sticks out by N mm" | Linux | Done |
 | F1 | Parting plane chosen by geometry (option, default once validated) | flange -> plane on the disc, trapped <= 0.6 %; box -> axis Z | Linux | Done |
-| F2 | Shrinkage on the mold halves; resin separate from the mold steel in the config | box, s = 0.011 -> cavity 20.22 x 10.11 x 5.055 mm (+- 1 voxel) | Windows | Open |
+| F2 | Shrinkage on the mold halves; resin separate from the mold steel in the config | box, s = 0.011 -> cavity 20.22 x 10.11 x 5.055 mm (+- 1 voxel) | Windows | Done in code; the halves need the Windows run |
 | F3 | Feed system tied to the part (priority 3) | box -> the gate reaches the cavity; sprue and runner keep the clearance from the part and stay inside the block | Linux | Open |
 | F4 | Ejector pins on the moving half (priority 4) | box -> pins under the face of the moving half, inside its outline, at the minimum spacing | Linux | Open |
 | F5 | Cooling around the real cavity | channel-to-cavity distance >= the configured minimum; no channel crosses a pin or the feed | Linux | Open |
@@ -65,3 +65,23 @@ plane in use and recommend the mode when it traps less. Windows STLs of the Part
 
 The helical gear has no flat split that releases its helix; the piston keeps its ring grooves and pin bores trapped
 (side actions) whatever the split.
+
+## F2. Shrinkage on the mold halves
+
+Before, the boolean cavity and both mold halves were cut around the part as designed: only the legacy Cavity.stl and
+Core.stl were scaled, so a molded part would come out smaller by the shrinkage. Now:
+
+- The shrinkage comes from the resin: optional `"resin": { "name": "ABS", "shrinkageRate": 0.006 }`. A known resin
+  (ABS, PP, PC, PA, POM, PE) may omit the rate and gets the recommended rate of `ShrinkageRuleEngine`; a rate outside
+  the resin's typical range is flagged. Without a resin section, `material.shrinkageRate` is kept as before and the
+  warnings say so (`material` names the mold steel in the samples).
+- The generator writes `ShrinkageScaledPart.stl`: the part scaled by 1 + shrinkage about its bounding-box centre.
+  BooleanCavity.stl and both halves are cut around it, and the split moves with it (same relative height): the
+  end-to-end box split on its bottom face (Z = 0) is split at Z = -0.0275 mm in the mold.
+- The block fit (F0) is checked on the cavity. `FunctionalMoldAlphaReport.Shrinkage` gives the rate, its source, the
+  scale factor, the cavity bounds and the split height in the mold. The artifact count goes from 10 to 11.
+- Draft, undercut and wall thickness stay measured on the part as designed.
+
+The cavity size in the generated halves (20.22 x 10.11 x 5.055 mm for the box, within one voxel) is measured by the
+F7 verifier on the Windows run.
+

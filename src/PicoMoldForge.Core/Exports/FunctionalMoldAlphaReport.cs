@@ -4,6 +4,7 @@ using PicoMoldForge.Core.Engineering.DraftAnalysis;
 using PicoMoldForge.Core.Engineering.EjectionGeometry;
 using PicoMoldForge.Core.Engineering.GateSystem;
 using PicoMoldForge.Core.Engineering.Separation;
+using PicoMoldForge.Core.Engineering.Shrinkage;
 using PicoMoldForge.Core.Engineering.Undercuts;
 using PicoMoldForge.Core.Engineering.WallThickness;
 
@@ -21,7 +22,8 @@ public sealed record FunctionalMoldAlphaReport(
     EjectorCandidateGenerationSummary? EjectorCandidates = null,
     ClearanceCollisionMatrixSummary? ClearanceMatrix = null,
     PartingPlaneScore? PartingPlane = null,
-    MoldBlockFitSummary? MoldBlockFit = null)
+    MoldBlockFitSummary? MoldBlockFit = null,
+    MoldShrinkageSummary? Shrinkage = null)
 {
     public IReadOnlyList<string> Validate()
     {

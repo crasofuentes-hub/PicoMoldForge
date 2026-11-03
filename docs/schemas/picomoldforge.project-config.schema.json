@@ -65,6 +65,23 @@
         }
       }
     },
+    "resin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "description": "Resin the part is molded in. Its shrinkage sizes the cavity; a known resin (ABS, PP, PC, PA, POM, PE) may omit shrinkageRate and uses its recommended rate. Without resin, material.shrinkageRate is used.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "shrinkageRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.1
+        }
+      }
+    },
     "machine": {
       "type": "object",
       "additionalProperties": true,

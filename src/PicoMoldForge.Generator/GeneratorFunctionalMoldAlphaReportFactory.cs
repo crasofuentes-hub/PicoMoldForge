@@ -117,7 +117,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             EjectorCandidates: CreateEjectorSummary(input),
             ClearanceMatrix: CreateClearanceSummary(input, coolingPlan),
             PartingPlane: partingPlaneScoring.BestScore,
-            MoldBlockFit: plan.BlockFit);
+            MoldBlockFit: plan.BlockFit,
+            Shrinkage: plan.ShrinkageSummary);
     }
 
     /// <summary>Area of the part bounds seen along the split axis.</summary>

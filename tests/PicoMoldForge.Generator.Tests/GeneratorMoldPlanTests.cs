@@ -27,7 +27,9 @@ public sealed class GeneratorMoldPlanTests
         Assert.Equal(5m, plan.PartBounds.MaxZmm);
         Assert.True(plan.BlockFit.IsPartInsideBlock);
         Assert.True(plan.BlockFit.MeetsRequiredMargin);
-        Assert.Equal(25m, plan.BlockFit.MinimumMarginMm);
+
+        // The fit is checked on the cavity: the box scaled by 1.011 about its centre reaches x = -0.11.
+        Assert.Equal(24.89m, plan.BlockFit.MinimumMarginMm);
         Assert.Equal("-X", plan.BlockFit.MinimumMarginSide);
         Assert.Equal(PartingAxis.X, plan.SplitAxis);
         Assert.Equal(10m, plan.PartingOffsetMm);
@@ -74,11 +76,58 @@ public sealed class GeneratorMoldPlanTests
         Assert.Equal("Geometry", plan.PartingSource);
         Assert.Contains("Split by geometry (parting.mode Geometry).", plan.Notes);
 
+        // The bottom face of the cavity is at z = 2.5 - 2.5 x 1.011: the mold split moves with it.
+        Assert.Equal(-0.0275m, plan.MoldPartingOffsetMm);
+        Assert.Contains("Mold split at Z = -0.0275 mm: the part split at 0 mm, moved with the scaled cavity.", plan.Notes);
+
         // Split on the bottom face: top and bottom open along their normals, the four walls lack draft.
         Assert.Equal(4, report.DraftGeometry!.PositiveDraftCount);
         Assert.Equal(300m, report.DraftGeometry.RiskySurfaceAreaMm2);
         Assert.Equal(0m, report.UndercutRisk!.RiskySurfaceAreaMm2);
         Assert.Contains(report.Warnings, w => w.StartsWith("Draft and undercut measured on the input STL for a two-half mold split by the plane Z = 0 mm", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_ScalesTheCavityByTheMaterialShrinkage_WhenNoResinIsGiven()
+    {
+        using var project = TestProject.Create();
+
+        var plan = GeneratorMoldPlanner.Plan(project.Input, TestProject.AutomaticPlane(project.Input));
+
+        Assert.Equal(0.011m, plan.Shrinkage.Rate);
+        Assert.Equal("material.shrinkageRate", plan.Shrinkage.Source);
+        Assert.Equal(1.011m, plan.ShrinkageScale);
+        Assert.Equal(-0.11m, plan.CavityBounds.MinXmm);
+        Assert.Equal(20.11m, plan.CavityBounds.MaxXmm);
+        Assert.Equal(-0.055m, plan.CavityBounds.MinYmm);
+        Assert.Equal(10.055m, plan.CavityBounds.MaxYmm);
+        Assert.Equal(-0.0275m, plan.CavityBounds.MinZmm);
+        Assert.Equal(5.0275m, plan.CavityBounds.MaxZmm);
+        Assert.Equal(10m, plan.MoldPartingOffsetMm);
+        Assert.Contains("Cavity: the part scaled by 1.011 about its bounding-box centre, X -0.11 to 20.11, Y -0.055 to 10.055, Z -0.0275 to 5.0275 mm (20.22 x 10.11 x 5.055 mm); the mold halves are cut around it.", plan.Notes);
+    }
+
+    [Theory]
+    [InlineData("\"resin\": { \"name\": \"ABS\" },\n          ", 0.005, "resin (recommended rate)")]
+    [InlineData("\"resin\": { \"name\": \"PP\", \"shrinkageRate\": 0.015 },\n          ", 0.015, "resin")]
+    public void Plan_UsesTheResinShrinkage(string resinJson, double rate, string source)
+    {
+        using var project = TestProject.Create(extraJson: resinJson);
+
+        var plan = GeneratorMoldPlanner.Plan(project.Input, TestProject.AutomaticPlane(project.Input));
+
+        Assert.Equal((decimal)rate, plan.Shrinkage.Rate);
+        Assert.Equal(source, plan.Shrinkage.Source);
+        Assert.Equal(1m + (decimal)rate, plan.ShrinkageScale);
+    }
+
+    [Fact]
+    public void Validator_RejectsAnUnknownResinWithoutRate()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            TestProject.Create(extraJson: "\"resin\": { \"name\": \"Mystery\" },\n          ").Dispose());
+
+        Assert.Contains("resin.shrinkageRate is required for resin 'Mystery'", error.Message);
     }
 
     [Fact]
@@ -91,8 +140,8 @@ public sealed class GeneratorMoldPlanTests
         Assert.NotNull(report.MoldBlockFit);
         Assert.False(report.MoldBlockFit!.IsPartInsideBlock);
         Assert.Equal("+X", report.MoldBlockFit.MinimumMarginSide);
-        Assert.Equal(-95m, report.MoldBlockFit.MinimumMarginMm);
-        Assert.Contains(report.Warnings, w => w.StartsWith("FAIL: the part sticks out of the mold block by 95 mm on +X", StringComparison.Ordinal));
+        Assert.Equal(-95.11m, report.MoldBlockFit.MinimumMarginMm);
+        Assert.Contains(report.Warnings, w => w.StartsWith("FAIL: the cavity sticks out of the mold block by 95.11 mm on +X", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -104,7 +153,7 @@ public sealed class GeneratorMoldPlanTests
 
         Assert.True(report.MoldBlockFit!.MeetsRequiredMargin);
         Assert.NotNull(report.PartingPlane);
-        Assert.Contains(report.Warnings, w => w.StartsWith("Mold block margin: at least 25 mm (-X); required 20 mm", StringComparison.Ordinal));
+        Assert.Contains(report.Warnings, w => w.StartsWith("Mold block margin around the cavity: at least 24.89 mm (-X); required 20 mm", StringComparison.Ordinal));
 
         // The scorer works on the measured part (x 0 to 20 mm), not on the configured 100 x 60 x 30 mm part.
         var candidate = report.PartingPlane!.Candidate;

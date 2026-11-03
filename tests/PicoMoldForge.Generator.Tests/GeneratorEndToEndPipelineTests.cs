@@ -32,9 +32,10 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, exitCode);
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 10", output.ToString());
+            Assert.Contains("Artifacts generated: 11", output.ToString());
 
             Assert.True(File.Exists(Path.Combine(outputDirectory, "DiagnosticMesh.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "ShrinkageScaledPart.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "Cavity.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCavity.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "BooleanCoreSide.stl")));
@@ -97,6 +98,15 @@ public sealed class GeneratorEndToEndPipelineTests
                 undercutRisk.GetProperty("UndercutCount").GetInt32() +
                 undercutRisk.GetProperty("InvalidNormalCount").GetInt32() ==
                 undercutRisk.GetProperty("FaceCount").GetInt32());
+            // Cavity: the box scaled by 1.011 (material.shrinkageRate) about its centre; split X = 10 stays at 10.
+            var shrinkage = alpha.GetProperty("Shrinkage");
+
+            Assert.Equal(0.011m, shrinkage.GetProperty("ShrinkageRate").GetDecimal());
+            Assert.Equal(1.011m, shrinkage.GetProperty("ScaleFactor").GetDecimal());
+            Assert.Equal(-0.11m, shrinkage.GetProperty("CavityBounds").GetProperty("MinXmm").GetDecimal());
+            Assert.Equal(20.11m, shrinkage.GetProperty("CavityBounds").GetProperty("MaxXmm").GetDecimal());
+            Assert.Equal(10m, shrinkage.GetProperty("MoldPartingOffsetMm").GetDecimal());
+            Assert.True(alpha.GetProperty("MoldBlockFit").GetProperty("MeetsRequiredMargin").GetBoolean());
             var partingPlane = alpha.GetProperty("PartingPlane");
 
             Assert.True(partingPlane.GetProperty("QualityScore").GetDecimal() >= 0m);
