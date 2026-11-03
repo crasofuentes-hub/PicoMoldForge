@@ -43,6 +43,7 @@ public sealed class GeneratorPipelineInputValidator
         }
 
         var partingOverride = LoadPartingOverride(document, moldBlockBounds);
+        var partingByGeometry = IsPartingByGeometry(document);
 
         var cooling = LoadCoolingConfig(document);
         var coolingErrors = cooling.Validate();
@@ -119,7 +120,8 @@ public sealed class GeneratorPipelineInputValidator
             cooling,
             lattice,
             moldSystem,
-            dfam);
+            dfam,
+            partingByGeometry);
     }
 
     private static GeneratorDfamConfig LoadDfamConfig(JsonDocument document)
@@ -207,6 +209,15 @@ public sealed class GeneratorPipelineInputValidator
             MaxZmm: ReadRequiredDecimal(moldBlock, "maxZmm"));
     }
 
+    /// <summary>parting.mode Geometry: the split is searched on the part mesh (PartingPlaneSearch).</summary>
+    private static bool IsPartingByGeometry(JsonDocument document)
+    {
+        return document.RootElement.TryGetProperty("parting", out var parting) &&
+            parting.TryGetProperty("mode", out var mode) &&
+            mode.ValueKind == JsonValueKind.String &&
+            string.Equals(mode.GetString(), "Geometry", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static GeneratorPartingOverride? LoadPartingOverride(JsonDocument document, MoldBlockBounds moldBlockBounds)
     {
         if (!document.RootElement.TryGetProperty("parting", out var parting))
@@ -216,14 +227,15 @@ public sealed class GeneratorPipelineInputValidator
 
         var mode = ReadRequiredString(parting, "mode");
 
-        if (string.Equals(mode, "Auto", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(mode, "Auto", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(mode, "Geometry", StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
         if (!string.Equals(mode, "Manual", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("parting.mode must be either Auto or Manual.");
+            throw new InvalidOperationException("parting.mode must be Auto, Manual or Geometry.");
         }
 
         var axisText = ReadRequiredString(parting, "axis");

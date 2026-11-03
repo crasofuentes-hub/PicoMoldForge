@@ -13,4 +13,5 @@ public sealed record GeneratorPipelineInput(
     GeneratorCoolingConfig Cooling,
     GeneratorLatticeConfig Lattice,
     GeneratorMoldSystemConfig MoldSystem,
-    GeneratorDfamConfig DfAM);
+    GeneratorDfamConfig DfAM,
+    bool PartingByGeometry = false);

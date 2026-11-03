@@ -195,6 +195,17 @@ Auto mode delegates split-axis and split-offset selection to the current prelimi
 
 Manual mode gives the user explicit control over the split used for BooleanCoreSide.stl and BooleanCavitySide.stl.
 
+### Geometry mode
+
+    "parting": {
+      "mode": "Geometry"
+    }
+
+Geometry mode splits at the plane found on the part mesh by PartingPlaneSearch: on X, Y and Z it tries the levels of
+flat faces, evenly spaced levels, the bounding-box centre and the part ends, and keeps the split with the least trapped
+area (faces that cannot leave their mold half), then the most flat area in the plane, then the least area without
+1 deg of draft. The report warnings always give this plane and compare it with the plane in use.
+
 Allowed axis values:
 
 - X
@@ -203,7 +214,7 @@ Allowed axis values:
 
 Validation rules:
 
-- parting.mode must be Auto or Manual;
+- parting.mode must be Auto, Manual or Geometry;
 - parting.axis is required for Manual mode;
 - parting.axis must be X, Y, or Z;
 - parting.offsetMm is required for Manual mode;

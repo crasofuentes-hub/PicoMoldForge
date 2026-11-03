@@ -1,4 +1,5 @@
 using System.Globalization;
+using PicoMoldForge.Core.Engineering.MoldAccess;
 using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Parting;
@@ -11,7 +12,8 @@ namespace PicoMoldForge.Generator;
 /// Layout of the mold for one generator run, computed once from the input STL (pure .NET, no PicoGK runtime) and
 /// shared by the geometry steps and the report, so they all use the same part and the same split.
 /// <paramref name="PartBounds"/> are measured on the STL; <paramref name="SplitAxis"/> and
-/// <paramref name="PartingOffsetMm"/> are the split used for the mold halves.
+/// <paramref name="PartingOffsetMm"/> are the split used for the mold halves; <paramref name="GeometrySearch"/> is the
+/// split found on the part mesh, used when parting.mode is Geometry and reported in every case.
 /// </summary>
 public sealed record GeneratorMoldPlan(
     IReadOnlyList<MeshTriangle> Triangles,
@@ -20,6 +22,7 @@ public sealed record GeneratorMoldPlan(
     CorePartingAxis SplitAxis,
     decimal PartingOffsetMm,
     string PartingSource,
+    PartingPlaneSearchResult GeometrySearch,
     IReadOnlyList<string> Notes)
 {
     public SeparationPartingAxis SeparationAxis => SplitAxis switch
@@ -76,9 +79,62 @@ public static class GeneratorMoldPlanner
         var axis = input.PartingOverride?.Axis ?? automaticPlane.Axis;
         var offset = input.PartingOverride?.OffsetMm ?? Convert.ToDecimal(automaticPlane.PlaneOffsetMm);
         var source = input.PartingOverride is null ? "Auto (bounding-box centre)" : "Manual";
+        var search = PartingPlaneSearch.Search(triangles, reference: (ToSearchAxis(axis), (double)offset));
 
-        return new GeneratorMoldPlan(triangles, partBounds, blockFit, axis, offset, source, notes);
+        if (input.PartingByGeometry)
+        {
+            axis = ToPartingAxis(search.Best.Axis);
+            offset = Round(search.Best.OffsetMm);
+            source = "Geometry";
+        }
+
+        notes.AddRange(PartingNotes(search, axis, offset, source));
+
+        return new GeneratorMoldPlan(triangles, partBounds, blockFit, axis, offset, source, search, notes);
     }
+
+    private static IEnumerable<string> PartingNotes(
+        PartingPlaneSearchResult search,
+        CorePartingAxis axis,
+        decimal offset,
+        string source)
+    {
+        var best = search.Best;
+        yield return Invariant($"Parting plane by geometry: {best.Axis} = {best.OffsetMm:0.###} mm ({best.Source.ToLowerInvariant()}): {Percent(best.TrappedAreaMm2, search.TotalAreaMm2)} of the surface trapped, {Percent(best.UndraftedAreaMm2, search.TotalAreaMm2)} with less than 1 deg of draft.");
+
+        if (source == "Geometry")
+        {
+            yield return "Split by geometry (parting.mode Geometry).";
+            yield break;
+        }
+
+        var used = search.Reference!;
+        yield return Invariant($"Plane in use: {axis} = {offset:0.###} mm ({source}): {Percent(used.TrappedAreaMm2, search.TotalAreaMm2)} trapped, {Percent(used.UndraftedAreaMm2, search.TotalAreaMm2)} with less than 1 deg of draft.");
+
+        if (used.TrappedAreaMm2 > best.TrappedAreaMm2 + search.ToleranceMm2)
+        {
+            yield return "Set \"parting\": { \"mode\": \"Geometry\" } in the project config to split at the plane found by geometry.";
+        }
+    }
+
+    private static SeparationPartingAxis ToSearchAxis(CorePartingAxis axis) => axis switch
+    {
+        CorePartingAxis.X => SeparationPartingAxis.X,
+        CorePartingAxis.Y => SeparationPartingAxis.Y,
+        CorePartingAxis.Z => SeparationPartingAxis.Z,
+        _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
+    };
+
+    private static CorePartingAxis ToPartingAxis(SeparationPartingAxis axis) => axis switch
+    {
+        SeparationPartingAxis.X => CorePartingAxis.X,
+        SeparationPartingAxis.Y => CorePartingAxis.Y,
+        SeparationPartingAxis.Z => CorePartingAxis.Z,
+        _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unsupported parting axis.")
+    };
+
+    private static string Percent(double part, double total) =>
+        Invariant($"{(total > 0 ? 100 * part / total : 0):0.0} %");
 
     private static decimal Round(double value) => Math.Round((decimal)value, 4);
 
