@@ -9,13 +9,13 @@ the Functional Mold Alpha v2 priorities (docs/FUNCTIONAL_MOLD_ALPHA_V2.md).
 |-------|------|---------------------------------------------|-------------|--------|
 | F0 | The measured part through the pipeline; line-ending policy | 20 x 10 x 5 mm box -> separation and scorer use 0-20 / 0-10 / 0-5; a block that does not contain the part -> FAIL "sticks out by N mm" | Linux | Done |
 | F1 | Parting plane chosen by geometry (option, default once validated) | flange -> plane on the disc, trapped <= 0.6 %; box -> axis Z | Linux | Done |
-| F2 | Shrinkage on the mold halves; resin separate from the mold steel in the config | box, s = 0.011 -> cavity 20.22 x 10.11 x 5.055 mm (+- 1 voxel) | Windows | Done in code; the halves need the Windows run |
-| F3 | Feed system tied to the part (priority 3) | box -> the gate reaches the cavity; sprue and runner keep the clearance from the part and stay inside the block | Linux | Done in code; the diagnostics are drawn on the Windows run |
-| F4 | Ejector pins on the moving half (priority 4) | box -> pins under the face of the moving half, inside its outline, at the minimum spacing | Linux | Done in code; as F3 |
-| F5 | Cooling around the real cavity | channel-to-cavity distance >= the configured minimum; no channel crosses a pin or the feed | Linux | Done in code; as F3 |
-| F6 | Subtract all features from the halves; centering features (priority 5) | removed volume = volume of each system (+- voxel); the halves locate and open without collision | Windows | Done in code; needs the Windows run |
-| F7 | Verification of the final mold | PASS where the part leaves two halves (box, spur gear); elsewhere the zone and the mechanism it needs | Linux + Windows | Done in code (Linux checks); the halves checks need the Windows run |
-| F8 | Package and link with Parts (priority 7), including the parked touching-faces fix | one launcher designs the part, generates its mold and leaves a ZIP of results | Windows | Done in code (scripts/run-mold-verification.ps1); needs the Windows run |
+| F2 | Shrinkage on the mold halves; resin separate from the mold steel in the config | box, s = 0.011 -> cavity 20.22 x 10.11 x 5.055 mm (+- 1 voxel) | Windows | Done; on Windows the halves follow the scaled cavity within one voxel (p90 0.27 mm at 1 mm voxels) |
+| F3 | Feed system tied to the part (priority 3) | box -> the gate reaches the cavity; sprue and runner keep the clearance from the part and stay inside the block | Linux + Windows | Done; checked on the Windows halves (axis points, clearances) |
+| F4 | Ejector pins on the moving half (priority 4) | box -> pins under the face of the moving half, inside its outline, at the minimum spacing | Linux + Windows | Done; as F3 |
+| F5 | Cooling around the real cavity | channel-to-cavity distance >= the configured minimum; no channel crosses a pin or the feed | Linux + Windows | Done; as F3 |
+| F6 | Subtract all features from the halves; centering features (priority 5) | removed volume = volume of each system (+- voxel); the halves locate and open without collision | Windows | Done; on Windows each system removed -10.8 % to +6.3 % of the expected steel, every axis point agrees, the halves share 0 mm3 |
+| F7 | Verification of the final mold | PASS where the part leaves two halves (box, spur gear); elsewhere the zone and the mechanism it needs | Linux + Windows | Done; every check runs on Windows |
+| F8 | Package and link with Parts (priority 7), including the parked touching-faces fix | one launcher designs the part, generates its mold and leaves a ZIP of results | Windows | Done; four Windows runs, the last (8332b78) with 583/583 tests and six molds |
 
 F1 comes before F3 to F5 because the gate, the ejectors and the channels are placed relative to the plane.
 
