@@ -120,8 +120,12 @@ public static class MoldVerifier
             return Check("two-halves", Title, MoldCheckStatus.Pass, Invariant($"Every face releases along the opening direction of its half ({blockedArea:0.##} mm2 held, within {tolerance:0.##} mm2 of mesh noise)."));
         }
 
-        zones.AddRange(Zones(input.PartTriangles, blocked));
-        var text = Invariant($"{blockedArea:0.#} mm2 ({100 * blockedArea / total:0.#} % of the surface) cannot leave the two halves, in {zones.Count} zone(s)");
+        // Zones under 1 mm2 are slivers of the mesh: counted, not listed.
+        var all = Zones(input.PartTriangles, blocked).ToArray();
+        var small = all.Where(z => z.AreaMm2 < 1.0).ToArray();
+        zones.AddRange(all.Where(z => z.AreaMm2 >= 1.0));
+        var text = Invariant($"{blockedArea:0.#} mm2 ({100 * blockedArea / total:0.#} % of the surface) cannot leave the two halves, in {zones.Count} zone(s)") +
+            (small.Length > 0 ? Invariant($" and {small.Length} sliver(s) under 1 mm2 ({small.Sum(z => z.AreaMm2):0.#} mm2)") : string.Empty);
         var largest = zones.OrderByDescending(z => z.AreaMm2).Take(3)
             .Select(z => Invariant($"{z.AreaMm2:0.#} mm2 at X {z.Min.X:0.#}..{z.Max.X:0.#}, Y {z.Min.Y:0.#}..{z.Max.Y:0.#}, Z {z.Min.Z:0.#}..{z.Max.Z:0.#}: {z.Mechanism}"));
         return Check("two-halves", Title, MoldCheckStatus.Fail, text + ": " + string.Join("; ", largest) + ".");
@@ -170,16 +174,22 @@ public static class MoldVerifier
                 var t = triangles[faces[k].TriangleIndex];
                 return new[] { t.A, t.B, t.C };
             }).ToArray();
-            var trapped = members.Any(f => f.Access == MoldFaceAccess.Trapped);
+            // The zone needs more than a slide when a real share of it has no sideways escape: a sliver of a few
+            // trapped triangles in a bore that a slide releases is mesh noise.
+            var area = members.Sum(f => f.AreaMm2);
+            var trappedArea = members.Where(f => f.Access == MoldFaceAccess.Trapped).Sum(f => f.AreaMm2);
+            var trapped = trappedArea > Math.Max(1.0, 0.05 * area);
             var travel = members.Where(f => f.Access == MoldFaceAccess.SideAction).Select(f => f.SideTravelMm).DefaultIfEmpty(0).Max();
+            // Each face is released by some sideways move; whether one slide releases the whole zone (a bore) or it
+            // takes several (a groove all around the part) is not decided here.
             var mechanism = trapped
-                ? "an undercut no straight slide releases (a lifter, a collapsible core or a design change)"
-                : Invariant($"a side action (slide) with at least {travel:0.##} mm of travel");
+                ? Invariant($"an undercut no straight slide releases ({trappedArea:0.#} mm2 of it): a lifter, a collapsible core or a design change")
+                : Invariant($"a side action (one or more slides) with at least {travel:0.##} mm of travel");
             var half = members.Sum(f => f.Half * f.AreaMm2) >= 0 ? 1 : -1;
 
             yield return new MoldTrappedZone(
                 mechanism,
-                members.Sum(f => f.AreaMm2),
+                area,
                 new MoldLayoutPoint(vertices.Min(v => v.X), vertices.Min(v => v.Y), vertices.Min(v => v.Z)),
                 new MoldLayoutPoint(vertices.Max(v => v.X), vertices.Max(v => v.Y), vertices.Max(v => v.Z)),
                 trapped ? 0 : travel,

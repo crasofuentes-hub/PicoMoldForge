@@ -196,6 +196,21 @@ Linux results without the halves:
 - End-to-end box, split X = 10: PASS. The - half has no cooling, so that check is a WARN.
 - T-shape split under its bar: FAIL, with two zones that need a slide (test
   `TShape_SplitUnderTheBar_FailsWithTheZonesThatNeedASlide`).
+- Parts samples, molded with `--mold-stl` (pure .NET part):
+  - spur gear: PASS;
+  - flange: FAIL, one zone, the 4 mm cross hole in the hub (a slide, at least 9.96 mm of travel);
+  - monoblock: FAIL, the main bearing bore in both end walls and the bulkhead (slides);
+  - piston: FAIL, three ring grooves and the pin bores (slides);
+  - helical gear: FAIL, 24 tooth flanks.
+
+Rule refuted on the way: "a zone with any trapped face is an undercut". On the symmetric monoblock, one trapped
+sliver of 0.1 mm2 made the 565 mm2 bore of one end wall an undercut, while the other end wall needed a slide.
+Now:
+
+- A zone is an undercut only when its trapped area exceeds max(1 mm2, 5 % of the zone).
+- Zones under 1 mm2 are counted as slivers and not listed (test `Zone_IsAnUndercutOnlyWhenARealShareOfItIsTrapped`).
+- Whether one slide releases a zone or it takes several (a groove all around the part) is not decided. A heuristic
+  on the normals of the zone was refuted by the same bores: their end faces looked like a ring.
 
 ## F8. Parts to mold
 

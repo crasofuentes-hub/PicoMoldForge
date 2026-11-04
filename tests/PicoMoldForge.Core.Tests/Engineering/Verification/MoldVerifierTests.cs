@@ -53,6 +53,41 @@ public sealed class MoldVerifierTests
         Assert.StartsWith("FAIL: the part leaves the mold in two halves", report.Summary, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(0.1, "a side action (one or more slides)")]
+    [InlineData(50.0, "an undercut no straight slide releases")]
+    public void Zone_IsAnUndercutOnlyWhenARealShareOfItIsTrapped(double trappedArea, string mechanism)
+    {
+        // Two touching triangles: one released by a slide (100 mm2), one with no sideways escape. A trapped sliver
+        // of 0.1 mm2 in a bore that a slide releases is mesh noise (the monoblock showed one such face flipping a
+        // 565 mm2 zone into an undercut on one side only of a symmetric part).
+        var part = new[]
+        {
+            new MeshTriangle(new MeshVertex(0, 0, 0), new MeshVertex(10, 0, 0), new MeshVertex(0, 20, 0)),
+            new MeshTriangle(new MeshVertex(0, 0, 0), new MeshVertex(0, 20, 0), new MeshVertex(-10, 0, 0))
+        };
+        var access = new MeshMoldAccessResult(
+            new[]
+            {
+                new MoldAccessFace(0, 100, -1, 0, MoldFaceAccess.SideAction, 4.5, new MeshVertex(3, 6, 0)),
+                new MoldAccessFace(1, trappedArea, -1, 0, MoldFaceAccess.Trapped, 0, new MeshVertex(-3, 6, 0))
+            },
+            PartingAxis.Z,
+            0,
+            1000,
+            false,
+            0.1);
+
+        var report = MoldVerifier.Verify(Input(MeshWallThicknessSamplerTests.GeneratorTestBox(), PartingAxis.Z, 0, halves: null) with
+        {
+            PartTriangles = part,
+            Access = access
+        });
+
+        var zone = Assert.Single(report.Zones);
+        Assert.StartsWith(mechanism, zone.Mechanism, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Halves_WithTheSteelEachSystemShouldRemove_Pass()
     {
