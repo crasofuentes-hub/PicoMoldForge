@@ -142,6 +142,70 @@ public sealed class GeneratorMoldPlanTests
         Assert.Equal("+X", report.MoldBlockFit.MinimumMarginSide);
         Assert.Equal(-95.11m, report.MoldBlockFit.MinimumMarginMm);
         Assert.Contains(report.Warnings, w => w.StartsWith("FAIL: the cavity sticks out of the mold block by 95.11 mm on +X", StringComparison.Ordinal));
+
+        // No feature is placed around a cavity that does not fit in the block.
+        Assert.Null(report.MoldLayout);
+        Assert.Equal(0, report.GateRunnerSprue!.SegmentCount);
+        Assert.Equal(0, report.EjectorCandidates!.CandidateCount);
+        Assert.Equal(0, report.CoolingChannels!.ChannelCount);
+        Assert.Contains(report.Warnings, w => w.StartsWith("Mold layout skipped: the cavity does not fit inside the mold block", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Report_OfTheEndToEndBox_PlacesTheFeedPinsAndCoolingAroundTheCavity()
+    {
+        using var project = TestProject.Create();
+
+        var report = project.CreateReport();
+        var layout = report.MoldLayout!;
+
+        // Split X = 10: the halves hold the part alike, so the - half moves; its 10.11 x 5.055 mm end face takes
+        // one 4 mm pin with its margin. The block leaves 24.89 mm of steel behind the cavity in the - half, less
+        // than a channel needs (10 + 6 + 0.1 + 10 mm); the + half takes two of three (the third would cross the sprue).
+        Assert.Equal("-X", layout.MovingHalf);
+        Assert.True(layout.FeedIsFeasible);
+        Assert.Equal(1, layout.EjectorPinCount);
+        Assert.Equal(4, layout.RequestedEjectorPinCount);
+        Assert.Equal(2, layout.CoolingChannelCount);
+        Assert.True(layout.MinimumFeedCavityClearanceMm >= 0.5m);
+        Assert.True(layout.MinimumCoolingCavityClearanceMm >= 10m);
+        Assert.Contains(report.Warnings, w => w.StartsWith("Mold halves: the moving half is BooleanCoreSide.stl (the - side of the split)", StringComparison.Ordinal));
+        Assert.Contains(report.Warnings, w => w.StartsWith("Feed: edge gate on the parting plane", StringComparison.Ordinal));
+
+        // The evaluators judge the measured layout.
+        Assert.Equal(3, report.GateRunnerSprue!.SegmentCount);
+        Assert.Equal(3, report.GateRunnerSprue.GeneratableSegmentCount);
+        Assert.Equal(1, report.EjectorCandidates!.AcceptedCandidateCount);
+        Assert.Equal(2, report.CoolingChannels!.SubtractableChannelCount);
+        Assert.Equal(6, report.ClearanceMatrix!.FeatureCount);
+        Assert.Equal(12, report.ClearanceMatrix.PairCount);
+        Assert.Equal(0, report.ClearanceMatrix.CollisionRiskPairCount);
+        Assert.True(report.ClearanceMatrix.MinimumClearanceMarginMm >= 0m);
+
+        var gate = layout.Features.Single(f => f.Kind == "Gate");
+        var sprue = layout.Features.Single(f => f.Kind == "Sprue");
+        Assert.Equal(10, gate.Start.X, 9);
+        Assert.Equal(125, sprue.End.X, 9);
+        Assert.Equal(1, sprue.Half);
+    }
+
+    [Fact]
+    public void Report_Geometry_MovesTheHalfThatHoldsThePocket()
+    {
+        using var project = TestProject.Create(extraJson: "\"parting\": { \"mode\": \"Geometry\" },\n          ");
+
+        var report = project.CreateReport();
+        var layout = report.MoldLayout!;
+
+        // Split on the bottom face: the + half holds the pocket and moves; its 20.22 x 10.11 mm top face takes three
+        // 4 mm pins 8 mm apart. The sprue goes down through the flat - half.
+        Assert.Equal("+Z", layout.MovingHalf);
+        Assert.Equal(3, layout.EjectorPinCount);
+        Assert.All(layout.Features.Where(f => f.Kind == "EjectorPin"), f => Assert.Equal(5.0275, f.Start.Z, 6));
+        Assert.Equal(-25, layout.Features.Single(f => f.Kind == "Sprue").End.Z, 9);
+        Assert.Contains(report.Warnings, w => w.StartsWith("Mold halves: the moving half is BooleanCavitySide.stl (the + side of the split)", StringComparison.Ordinal));
+        Assert.Equal(3, report.EjectorCandidates!.AcceptedCandidateCount);
+        Assert.Equal(0, report.ClearanceMatrix!.CollisionRiskPairCount);
     }
 
     [Fact]

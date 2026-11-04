@@ -3,6 +3,7 @@ using PicoMoldForge.Core.Engineering.CoolingGeometry;
 using PicoMoldForge.Core.Engineering.DraftAnalysis;
 using PicoMoldForge.Core.Engineering.EjectionGeometry;
 using PicoMoldForge.Core.Engineering.GateSystem;
+using PicoMoldForge.Core.Engineering.MoldLayout;
 using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.Shrinkage;
 using PicoMoldForge.Core.Engineering.Undercuts;
@@ -23,7 +24,8 @@ public sealed record FunctionalMoldAlphaReport(
     ClearanceCollisionMatrixSummary? ClearanceMatrix = null,
     PartingPlaneScore? PartingPlane = null,
     MoldBlockFitSummary? MoldBlockFit = null,
-    MoldShrinkageSummary? Shrinkage = null)
+    MoldShrinkageSummary? Shrinkage = null,
+    MoldLayoutSummary? MoldLayout = null)
 {
     public IReadOnlyList<string> Validate()
     {

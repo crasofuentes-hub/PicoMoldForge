@@ -88,15 +88,24 @@ public sealed class GeneratorPipelineRunner
             PartingPlaneOffsetMm: moldPlan.MoldPartingOffsetMm,
             VoxelSizeMm: voxelSizeMm));
 
+        // The configuration-only cooling plan still validates the cooling request as before; the channels drawn and
+        // reported are the ones placed around the cavity by the mold layout.
         var coolingRequest = CreateCoolingRequest(input);
-        var coolingPlanner = new CoolingPlanner();
-        var coolingPlan = coolingPlanner.PlanStraightChannels(coolingRequest);
+        new CoolingPlanner().PlanStraightChannels(coolingRequest);
+        var coolingPlan = GeneratorMoldLayout.CoolingPlan(moldPlan.Layout);
 
-        var coolingExporter = new PicoCoolingDiagnosticExporter();
-        coolingExporter.ExportCoolingDiagnostic(
-            coolingPlan,
-            coolingDiagnosticPath,
-            voxelSizeMm);
+        if (coolingPlan.Segments.Count > 0)
+        {
+            new PicoCoolingDiagnosticExporter().ExportCoolingDiagnostic(
+                coolingPlan,
+                coolingDiagnosticPath,
+                voxelSizeMm);
+        }
+        else
+        {
+            BinaryStlTriangleWriter.Write(coolingDiagnosticPath, Array.Empty<MeshTriangle>(), "PicoMoldForge: no cooling channel placed");
+            warnings.Add("CoolingDiagnostic.stl is empty: no cooling channel fits around the cavity (see the Cooling note in the report).");
+        }
 
         var latticeRequest = CreateLatticeRequest(input);
         var latticePlanner = new LatticePlanner();
@@ -108,23 +117,41 @@ public sealed class GeneratorPipelineRunner
             latticeDiagnosticPath,
             voxelSizeMm);
 
+        // Vents and insert pockets still come from the configured part size; the ejector pins drawn are the ones
+        // placed on the moving half (the diagnostic draws vertical pins only, so pins along X or Y are left out).
         var moldSystemRequest = CreateMoldSystemRequest(input);
         var moldSystemPlanner = new PreliminaryMoldSystemPlanner();
-        var moldSystemPlan = moldSystemPlanner.Plan(moldSystemRequest);
+        var preliminaryMoldSystemPlan = moldSystemPlanner.Plan(moldSystemRequest);
+        var moldSystemPlan = preliminaryMoldSystemPlan with
+        {
+            Ejectors = preliminaryMoldSystemPlan.Ejectors with { Pins = GeneratorMoldLayout.VerticalPins(moldPlan.Layout) }
+        };
+
+        if (moldPlan.Layout is { Pins.Count: > 0 } && moldPlan.Layout.Axis != Core.Engineering.Separation.PartingAxis.Z)
+        {
+            warnings.Add("MoldSystemDiagnostic.stl does not draw the ejector pins: they run along the split axis, which is not Z; their positions are in the report (MoldLayout).");
+        }
 
         var moldSystemExporter = new PicoMoldSystemDiagnosticExporter();
         moldSystemExporter.ExportMoldSystemDiagnostic(
             moldSystemPlan,
             moldSystemDiagnosticPath,
             voxelSizeMm);
-        var gateRunnerSprueInput = GeneratorGateRunnerSpruePlanFactory.CreateInput(input);
-        var gateRunnerSpruePlan = GeneratorGateRunnerSpruePlanFactory.Plan(gateRunnerSprueInput);
 
-        var gateRunnerSprueExporter = new PicoGateRunnerSprueDiagnosticExporter();
-        gateRunnerSprueExporter.ExportGateRunnerSprueDiagnostic(
-            gateRunnerSprueInput,
-            gateRunnerSprueDiagnosticPath,
-            voxelSizeMm);
+        var gateRunnerSprueInput = GeneratorMoldLayout.FeedInput(input, moldPlan.Layout);
+
+        if (gateRunnerSprueInput.Segments.Count > 0)
+        {
+            new PicoGateRunnerSprueDiagnosticExporter().ExportGateRunnerSprueDiagnostic(
+                gateRunnerSprueInput,
+                gateRunnerSprueDiagnosticPath,
+                voxelSizeMm);
+        }
+        else
+        {
+            BinaryStlTriangleWriter.Write(gateRunnerSprueDiagnosticPath, Array.Empty<MeshTriangle>(), "PicoMoldForge: no feed system placed");
+            warnings.Add("GateRunnerSprueDiagnostic.stl is empty: no gate could be placed on the cavity outline in the parting plane.");
+        }
 
         var dfamAnalyzer = new PreliminaryDfAMAnalyzer();
         var dfamReport = dfamAnalyzer.Analyze(CreateDfAMSnapshot(

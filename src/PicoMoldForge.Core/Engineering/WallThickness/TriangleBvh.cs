@@ -260,6 +260,137 @@ internal sealed class TriangleBvh
         return (best, bestTriangle);
     }
 
+    /// <summary>
+    /// Distance from the segment [p, q] to the nearest triangle, 0 when the segment meets a triangle. Exact (the
+    /// closest points of the segment and each triangle); a long segment is queried in pieces so the tree prunes.
+    /// </summary>
+    public double SegmentDistance(Vec3d p, Vec3d q)
+    {
+        var length = (q - p).Length;
+        var pieceLength = Math.Max(1e-9, (Max - Min).Length / 32);
+        var pieces = Math.Max(1, (int)Math.Min(1_000_000, Math.Ceiling(length / pieceLength)));
+        var best = double.PositiveInfinity;
+        Span<int> stack = stackalloc int[MaxStack];
+
+        for (var k = 0; k < pieces && best > 0; k++)
+        {
+            var a = p + ((q - p) * ((double)k / pieces));
+            var b = k + 1 == pieces ? q : p + ((q - p) * ((double)(k + 1) / pieces));
+            var middle = (a + b) * 0.5;
+            var halfLength = (b - a).Length / 2;
+            var top = 0;
+            stack[top++] = 0;
+
+            while (top > 0)
+            {
+                var node = _nodes[stack[--top]];
+
+                // Every point of the piece lies within halfLength of its middle.
+                if (Math.Sqrt(BoxDistanceSquared(node, middle)) - halfLength >= best)
+                {
+                    continue;
+                }
+
+                if (node.Left < 0)
+                {
+                    for (var i = node.Start; i < node.Start + node.Count; i++)
+                    {
+                        var distance = Math.Sqrt(SegmentTriangleDistanceSquared(a, b, _a[i], _b[i], _c[i]));
+
+                        if (distance < best)
+                        {
+                            best = distance;
+                        }
+                    }
+
+                    continue;
+                }
+
+                stack[top++] = node.Left;
+                stack[top++] = node.Right;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>Squared distance between the segment [p, q] and a triangle; 0 when they meet.</summary>
+    internal static double SegmentTriangleDistanceSquared(Vec3d p, Vec3d q, Vec3d a, Vec3d b, Vec3d c)
+    {
+        // A segment crossing the triangle plane inside the triangle meets it. Otherwise the closest points are an
+        // end of the segment and the triangle, or the segment and an edge (this also covers a segment lying in
+        // the plane of the triangle, for which the crossing test sees no determinant).
+        var t = RayTriangle(p, q - p, a, b, c);
+
+        if (t >= 0 && t <= 1)
+        {
+            return 0;
+        }
+
+        var best = PointTriangleDistanceSquared(p, a, b, c);
+        best = Math.Min(best, PointTriangleDistanceSquared(q, a, b, c));
+        best = Math.Min(best, SegmentSegmentDistanceSquared(p, q, a, b));
+        best = Math.Min(best, SegmentSegmentDistanceSquared(p, q, b, c));
+        best = Math.Min(best, SegmentSegmentDistanceSquared(p, q, c, a));
+        return best;
+    }
+
+    /// <summary>Squared distance between the segments [p1, q1] and [p2, q2] (Ericson, Real-Time Collision Detection, 5.1.9).</summary>
+    internal static double SegmentSegmentDistanceSquared(Vec3d p1, Vec3d q1, Vec3d p2, Vec3d q2)
+    {
+        const double Epsilon = 1e-18;
+        var d1 = q1 - p1;
+        var d2 = q2 - p2;
+        var r = p1 - p2;
+        var a = Vec3d.Dot(d1, d1);
+        var e = Vec3d.Dot(d2, d2);
+        var f = Vec3d.Dot(d2, r);
+        double s;
+        double t;
+
+        if (a <= Epsilon && e <= Epsilon)
+        {
+            return Vec3d.Dot(r, r);
+        }
+
+        if (a <= Epsilon)
+        {
+            s = 0;
+            t = Math.Clamp(f / e, 0, 1);
+        }
+        else
+        {
+            var c = Vec3d.Dot(d1, r);
+
+            if (e <= Epsilon)
+            {
+                t = 0;
+                s = Math.Clamp(-c / a, 0, 1);
+            }
+            else
+            {
+                var b = Vec3d.Dot(d1, d2);
+                var denominator = (a * e) - (b * b);
+                s = denominator > 0 ? Math.Clamp(((b * f) - (c * e)) / denominator, 0, 1) : 0;
+                t = ((b * s) + f) / e;
+
+                if (t < 0)
+                {
+                    t = 0;
+                    s = Math.Clamp(-c / a, 0, 1);
+                }
+                else if (t > 1)
+                {
+                    t = 1;
+                    s = Math.Clamp((b - c) / a, 0, 1);
+                }
+            }
+        }
+
+        var difference = (p1 + (d1 * s)) - (p2 + (d2 * t));
+        return Vec3d.Dot(difference, difference);
+    }
+
     private int Build(IReadOnlyList<MeshTriangle> triangles, int[] order, Vec3d[] centroids, int start, int count)
     {
         double minX = double.PositiveInfinity, minY = double.PositiveInfinity, minZ = double.PositiveInfinity;

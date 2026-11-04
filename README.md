@@ -304,9 +304,9 @@ The current output is:
 
 - CoolingDiagnostic.stl
 
-CoolingDiagnostic.stl is still a diagnostic visualization. It does not yet subtract cooling channels from BooleanCoreSide.stl or BooleanCavitySide.stl.
+The channels drawn and reported are placed around the cavity by the mold layout: channelCount straight drilled channels of channelDiameterMm in each half, spaced channelSpacingMm and centred on the cavity, keeping minimumClearanceMm of steel from the cavity (from the channel wall) and from the block faces, and 3 mm from the ejector pins and the feed. Positions that do not keep these clearances are skipped and named in the report warnings.
 
-Future cooling work should move from diagnostic channel geometry to actual cooling-channel subtraction and clearance checks against cavity/core, ejectors, inserts, and part geometry.
+CoolingDiagnostic.stl is still a diagnostic visualization. It does not yet subtract cooling channels from BooleanCoreSide.stl or BooleanCavitySide.stl (see docs/FUNCTIONAL_MOLD_PLAN.md, F6).
 
 ## Lattice configuration
 
@@ -378,9 +378,9 @@ The current output is:
 
 - MoldSystemDiagnostic.stl
 
-MoldSystemDiagnostic.stl is still a diagnostic visualization. It does not yet subtract ejector holes, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl.
+The ejector pins are placed on the moving half by the mold layout (ejectorPinCount pins of ejectorPinDiameterMm on its flat faces facing its back plate, 0.5 mm inside the face outline, at least two diameters apart); the feed system (edge gate, runner, sprue) is placed on the parting plane. The report lists every feature in FunctionalMoldAlpha.MoldLayout. Vents and insert pockets still come from the configured part size.
 
-Future mold-system work should move from diagnostic geometry to real mold-half subtraction, placement strategy, clearance validation, and manufacturability checks.
+MoldSystemDiagnostic.stl is still a diagnostic visualization (pins drawn only for a split across Z). It does not yet subtract ejector holes, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl (see docs/FUNCTIONAL_MOLD_PLAN.md, F6).
 
 ## DfAM configuration
 
