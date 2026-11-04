@@ -84,6 +84,12 @@ Example:
 BooleanCavity.stl is a functional preliminary boolean cavity proof. It is still not production-certified mold tooling.
 
 
+## Full mold verification (Windows)
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-mold-verification.ps1
+
+builds the solution, runs every test project (PicoGK native tests included), designs the five Parts samples, generates a mold for each of them (`PicoMoldForge.Generator --mold-stl`) and for the sample box, prints the verdict of every mold and leaves a ZIP of logs and reports on the Desktop.
+
 ## Functional mold halves
 
 Besides the plain split (BooleanCoreSide.stl, BooleanCavitySide.stl), the generator writes MovingHalf.stl and FixedHalf.stl: the halves with the feed, the ejector pin holes, the cooling channels and the guide bores cut and the guide pins added. The report's FunctionalMoldAlpha.Verification gives the verdict of the final mold (whether the part leaves two halves, or which zone needs a slide or a lifter; whether every system was cut; whether the halves overlap or open along the axis), also printed as "Mold verification: PASS|FAIL ...". See docs/FUNCTIONAL_MOLD_PLAN.md.

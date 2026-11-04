@@ -15,7 +15,7 @@ the Functional Mold Alpha v2 priorities (docs/FUNCTIONAL_MOLD_ALPHA_V2.md).
 | F5 | Cooling around the real cavity | channel-to-cavity distance >= the configured minimum; no channel crosses a pin or the feed | Linux | Done in code; as F3 |
 | F6 | Subtract all features from the halves; centering features (priority 5) | removed volume = volume of each system (+- voxel); the halves locate and open without collision | Windows | Done in code; needs the Windows run |
 | F7 | Verification of the final mold | PASS where the part leaves two halves (box, spur gear); elsewhere the zone and the mechanism it needs | Linux + Windows | Done in code (Linux checks); the halves checks need the Windows run |
-| F8 | Package and link with Parts (priority 7), including the parked touching-faces fix | one launcher designs the part, generates its mold and leaves a ZIP of results | Windows | Open |
+| F8 | Package and link with Parts (priority 7), including the parked touching-faces fix | one launcher designs the part, generates its mold and leaves a ZIP of results | Windows | Done in code (scripts/run-mold-verification.ps1); needs the Windows run |
 
 F1 comes before F3 to F5 because the gate, the ejectors and the channels are placed relative to the plane.
 
@@ -207,3 +207,15 @@ project validates and the mold plan passes every check that runs without PicoGK,
 Rule refuted on the way: cooling placed before the guide pins. On that box a channel of the fixed half took the
 corners, and two of the four guide pins found no room. Guide pins now come first: without them the halves do not
 align, while a channel has other positions.
+
+The launcher `scripts/run-mold-verification.ps1` (Windows PowerShell 5.1) runs the whole chain:
+
+1. Builds the solution and runs every test project (the PicoGK native tests of Parts included), reading each
+   project's result from its TRX file.
+2. Designs the five Parts samples and generates a mold for each of them and for the repository sample box.
+3. Prints the verdict of every mold and leaves one ZIP on the Desktop: logs, TRX files, reports and the halves of
+   the box and the spur gear. The other STL files stay in `mold-run/<date>/`.
+
+The touching-faces fix of Parts (field zeros classified by a nudge, so touching features join) is merged with an
+edge-midpoint guard in the simplifier. Without the guard, the flange left rim chords 0.2675 mm off the surface;
+with it, the flange stays within 0.1002 mm and all five samples pass every check.

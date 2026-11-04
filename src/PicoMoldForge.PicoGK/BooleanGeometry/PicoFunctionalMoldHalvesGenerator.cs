@@ -12,7 +12,8 @@ namespace PicoMoldForge.PicoGK.BooleanGeometry;
 /// <summary>
 /// Builds the functional mold halves: each half of the block minus the cavity, minus the feed, the ejector pin holes,
 /// the cooling channels and the guide bores that belong to it, plus its guide pins; writes MovingHalf.stl and
-/// FixedHalf.stl and measures, on the voxels, the steel each system removed or added and the steel both halves share.
+/// FixedHalf.stl and measures, on the voxels, the steel each system removed or added and the steel both halves share
+/// (each shrunk by half a voxel, so their common face on the parting plane does not count).
 /// </summary>
 public sealed class PicoFunctionalMoldHalvesGenerator
 {
@@ -50,7 +51,11 @@ public sealed class PicoFunctionalMoldHalvesGenerator
 
                 try
                 {
-                    using var overlap = movingVoxels.voxBoolIntersect(in fixedVoxels);
+                    // The halves meet on the parting plane, which the voxels may keep as a thin common sheet: compare
+                    // them shrunk by half a voxel each, so only steel that really interferes counts.
+                    using var movingCore = movingVoxels.voxOffset(-0.5f * request.VoxelSizeMm);
+                    using var fixedCore = fixedVoxels.voxOffset(-0.5f * request.VoxelSizeMm);
+                    using var overlap = movingCore.voxBoolIntersect(in fixedCore);
                     overlap.CalculateProperties(out var overlapVolume, out _);
 
                     var warnings = new[]

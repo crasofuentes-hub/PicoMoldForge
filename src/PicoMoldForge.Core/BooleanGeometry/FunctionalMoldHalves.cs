@@ -118,8 +118,9 @@ public sealed record FunctionalMoldHalfResult(
     int TriangleCount);
 
 /// <summary>
-/// The two functional halves and the steel they share (<paramref name="OverlapVolumeMm3"/>, ideally zero: the halves
-/// would collide where they overlap).
+/// The two functional halves and the steel they share (<paramref name="OverlapVolumeMm3"/>, measured with each half
+/// shrunk by half a voxel so their common face on the parting plane does not count; ideally zero: the halves would
+/// collide where they overlap).
 /// </summary>
 public sealed record FunctionalMoldHalvesResult(
     FunctionalMoldHalfResult Moving,
