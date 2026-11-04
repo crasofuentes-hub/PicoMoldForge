@@ -90,6 +90,36 @@ public sealed class MoldVerifierTests
     }
 
     [Theory]
+    [InlineData(12.0, "a side action (one or more slides) with at least 2 mm of travel for 95 % of its area (up to 12 mm for the rest)")]
+    [InlineData(2.0, "a side action (one or more slides) with at least 2 mm of travel")]
+    public void Zone_QuotesTheTravelThatFreesNinetyFivePercentOfIt(double lastTravel, string mechanism)
+    {
+        // Twenty faces round one vertex: ten of 5 mm2 freed by 1 mm, nine of 5 mm2 by 2 mm, one of 1 mm2 by
+        // lastTravel. On the piston, one face of 0.18 mm2 read 11.65 mm in a ring groove 2.6 mm deep whose other
+        // faces needed under 3 mm.
+        var part = Enumerable.Range(0, 20).Select(k =>
+        {
+            double A(int i) => 2 * Math.PI * i / 20;
+            return new MeshTriangle(new MeshVertex(0, 0, 0), new MeshVertex(10 * Math.Cos(A(k)), 10 * Math.Sin(A(k)), 0), new MeshVertex(10 * Math.Cos(A(k + 1)), 10 * Math.Sin(A(k + 1)), 0));
+        }).ToArray();
+        var faces = Enumerable.Range(0, 20)
+            .Select(k => new MoldAccessFace(k, k == 19 ? 1 : 5, -1, 0, MoldFaceAccess.SideAction, k == 19 ? lastTravel : k < 10 ? 1.0 : 2.0, new MeshVertex(0, 0, 0)))
+            .ToArray();
+        var access = new MeshMoldAccessResult(faces, PartingAxis.Z, 0, 1000, false, 0.1);
+
+        var report = MoldVerifier.Verify(Input(MeshWallThicknessSamplerTests.GeneratorTestBox(), PartingAxis.Z, 0, halves: null) with
+        {
+            PartTriangles = part,
+            Access = access
+        });
+
+        var zone = Assert.Single(report.Zones);
+        Assert.Equal(mechanism, zone.Mechanism);
+        Assert.Equal(2.0, zone.SideTravelMm, 9);
+        Assert.Equal(lastTravel, zone.MaximumSideTravelMm, 9);
+    }
+
+    [Theory]
     [InlineData(0.05, MoldCheckStatus.Warn, 0)]
     [InlineData(0.1, MoldCheckStatus.Fail, 1)]
     [InlineData(0.15, MoldCheckStatus.Fail, 1)]

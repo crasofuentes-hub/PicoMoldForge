@@ -21,7 +21,9 @@ public sealed record MoldVerificationCheck(string Id, string Title, MoldCheckSta
 
 /// <summary>
 /// A connected zone of the part that two halves cannot release: the mechanism it needs, its area and its bounding box
-/// (part coordinates, mm), and the longest side travel of its faces (0 for an undercut no straight slide releases).
+/// (part coordinates, mm). <paramref name="SideTravelMm"/> is the side travel that frees 95 % of its area and
+/// <paramref name="MaximumSideTravelMm"/> the longest travel of any of its faces (both 0 for an undercut no straight
+/// slide releases).
 /// </summary>
 public sealed record MoldTrappedZone(
     string Mechanism,
@@ -29,7 +31,8 @@ public sealed record MoldTrappedZone(
     MoldLayoutPoint Min,
     MoldLayoutPoint Max,
     double SideTravelMm,
-    int Half);
+    int Half,
+    double MaximumSideTravelMm = 0);
 
 /// <summary>The verdict on the final mold: PASS when no check fails; every check, and the zones that need more than two halves.</summary>
 public sealed record MoldVerificationReport(
@@ -225,12 +228,23 @@ public static class MoldVerifier
             var area = members.Sum(f => f.AreaMm2);
             var trappedArea = members.Where(f => f.Access == MoldFaceAccess.Trapped).Sum(f => f.AreaMm2);
             var trapped = trappedArea > Math.Max(1.0, 0.05 * area);
-            var travel = members.Where(f => f.Access == MoldFaceAccess.SideAction).Select(f => f.SideTravelMm).DefaultIfEmpty(0).Max();
+            var sides = members.Where(f => f.Access == MoldFaceAccess.SideAction).OrderBy(f => f.SideTravelMm).ToArray();
+            var travel = sides.Length == 0 ? 0 : sides[^1].SideTravelMm;
+
+            // The travel quoted frees 95 % of the zone's area, the share the trapped area is judged by. The longest
+            // travel of a single face is no measure of the zone: on the piston, 99 % of a ring groove 2.6 mm deep
+            // is freed by 2.9 mm, while one face of 0.18 mm2 read 11.65 mm; on the monoblock, the bore through the
+            // 10 mm bulkhead reads 5.06 mm at 95 % (half the bulkhead) and 9.5 mm at its longest face.
+            var travel95 = AreaQuantile(sides, 0.95);
+            var rest = travel > (1.1 * travel95) + 0.1
+                ? Invariant($" for 95 % of its area (up to {travel:0.##} mm for the rest)")
+                : string.Empty;
+
             // Each face is released by some sideways move; whether one slide releases the whole zone (a bore) or it
             // takes several (a groove all around the part) is not decided here.
             var mechanism = trapped
                 ? Invariant($"an undercut no straight slide releases ({trappedArea:0.#} mm2 of it): a lifter, a collapsible core or a design change")
-                : Invariant($"a side action (one or more slides) with at least {travel:0.##} mm of travel");
+                : Invariant($"a side action (one or more slides) with at least {travel95:0.##} mm of travel{rest}");
             var half = members.Sum(f => f.Half * f.AreaMm2) >= 0 ? 1 : -1;
 
             var zone = new MoldTrappedZone(
@@ -238,10 +252,33 @@ public static class MoldVerifier
                 area,
                 new MoldLayoutPoint(vertices.Min(v => v.X), vertices.Min(v => v.Y), vertices.Min(v => v.Z)),
                 new MoldLayoutPoint(vertices.Max(v => v.X), vertices.Max(v => v.Y), vertices.Max(v => v.Z)),
-                trapped ? 0 : travel,
-                half);
-            yield return (zone, !trapped && members.Any(f => f.Access == MoldFaceAccess.SideAction) && travel < resolutionMm);
+                trapped ? 0 : travel95,
+                half,
+                trapped ? 0 : travel);
+            yield return (zone, !trapped && sides.Length > 0 && travel < resolutionMm);
         }
+    }
+
+    /// <summary>
+    /// The smallest side travel that frees <paramref name="share"/> of the area of the faces (sorted by travel); 0 for
+    /// no faces.
+    /// </summary>
+    private static double AreaQuantile(IReadOnlyList<MoldAccessFace> sortedByTravel, double share)
+    {
+        var total = sortedByTravel.Sum(f => f.AreaMm2);
+        var covered = 0.0;
+
+        foreach (var face in sortedByTravel)
+        {
+            covered += face.AreaMm2;
+
+            if (covered >= share * total)
+            {
+                return face.SideTravelMm;
+            }
+        }
+
+        return sortedByTravel.Count == 0 ? 0 : sortedByTravel[^1].SideTravelMm;
     }
 
     // ---------------------------------------------------------------------------------------------------------
