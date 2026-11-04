@@ -16,7 +16,8 @@ public sealed record DecimationStats(
 /// <summary>
 /// Quadric error metric edge collapse (Garland-Heckbert) guided by the exact distance field: an edge only
 /// collapses if the new vertex stays within the tolerance of the true surface and the centroids of every
-/// affected triangle stay within CentroidToleranceFactor * tolerance. Collapses keep the mesh closed and
+/// affected triangle, and the midpoints of the edges that meet the new vertex, stay within
+/// CentroidToleranceFactor * tolerance. Collapses keep the mesh closed and
 /// manifold (link condition, minimum valence) and never flip a triangle by more than MaxNormalChangeDeg.
 /// The optimal position uses a pseudo-inverse of the quadric around the edge midpoint, so creases and corners
 /// are preserved while flat and smooth regions collapse.
@@ -341,6 +342,21 @@ public static class QemDecimator
                         var centroid = (na + nb + nc) * (1.0 / 3.0);
 
                         if (Math.Abs(_sdf.Distance(centroid)) > _centroidTolerance)
+                        {
+                            fidelityFailure = true;
+                            return false;
+                        }
+
+                        // A long chord along a curved rim sags most at its midpoint, where the centroids of the
+                        // triangles beside it (on the flat face) see nothing: check the midpoints of the edges that
+                        // meet the new vertex too.
+                        var aMoved = a == u || a == v;
+                        var bMoved = b == u || b == v;
+                        var cMoved = c == u || c == v;
+
+                        if (((aMoved || bMoved) && Math.Abs(_sdf.Distance((na + nb) * 0.5)) > _centroidTolerance) ||
+                            ((bMoved || cMoved) && Math.Abs(_sdf.Distance((nb + nc) * 0.5)) > _centroidTolerance) ||
+                            ((cMoved || aMoved) && Math.Abs(_sdf.Distance((nc + na) * 0.5)) > _centroidTolerance))
                         {
                             fidelityFailure = true;
                             return false;
