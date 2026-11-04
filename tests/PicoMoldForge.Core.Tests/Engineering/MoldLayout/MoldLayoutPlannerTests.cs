@@ -81,8 +81,10 @@ public sealed class MoldLayoutPlannerTests
     {
         var plan = MoldLayoutPlanner.Plan(Request(MeshWallThicknessSamplerTests.GeneratorTestBox(), PartingAxis.Z, 0, RoomyBlock));
 
+        // The - half (fixed) also holds the sprue and the guide bores: two of its five positions are left.
         Assert.Equal(3, plan.Channels.Count(c => c.Half == 1));
-        Assert.Equal(3, plan.Channels.Count(c => c.Half == -1));
+        Assert.Equal(2, plan.Channels.Count(c => c.Half == -1));
+        Assert.Contains(plan.Notes, n => n.Contains("would pass 0 mm from a guide pin", StringComparison.Ordinal));
 
         foreach (var channel in plan.Channels)
         {
@@ -102,6 +104,11 @@ public sealed class MoldLayoutPlannerTests
             foreach (var segment in plan.Feed!.Segments)
             {
                 Assert.True(MoldLayoutPlanner.Distance(channel.Start, channel.End, segment.Start, segment.End) - 3 - (segment.DiameterMm / 2) >= 3, $"{channel.Id} {segment.Id}");
+            }
+
+            foreach (var guide in plan.GuidePins)
+            {
+                Assert.True(MoldLayoutPlanner.Distance(channel.Start, channel.End, guide.Base, guide.BoreEnd) - 3 - (guide.BoreDiameterMm / 2) >= 3, $"{channel.Id} {guide.Id}");
             }
         }
     }

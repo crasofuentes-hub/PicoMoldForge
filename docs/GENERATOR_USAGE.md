@@ -264,6 +264,20 @@ The current split flow is:
 
 Manual parting does not yet implement shutoff surfaces, side actions, slides, lifters, gate design, runner design, sprue design, or manufacturing certification.
 
+## mold a part STL in one command
+
+    PicoMoldForge.Generator.exe --mold-stl <part.stl> --output <folder> [--resin ABS|PP|PC|PA|POM|PE|none] [--resin-shrinkage <rate>] [--voxel <mm>] [--clean-output]
+
+writes `<folder>/project.json` and generates the mold into `<folder>/mold`. The project:
+
+- splits by geometry (`"parting": { "mode": "Geometry" }`);
+- sizes the cavity by the resin (default ABS at its recommended rate; `none` keeps `material.shrinkageRate`);
+- takes a block of the cavity bounds plus a margin with room for every feature the layout places (the largest of 20 mm, the feed beside the cavity, a cooling channel behind it and a guide pin), rounded up to 5 mm;
+- uses the sample values for the cooling, the ejector pins and the other sections.
+
+The console line "Mold project settings" gives the block, the resin and the voxel size. A part from PicoMoldForge
+Parts goes straight in: `PicoMoldForge.Parts.Cli demo` writes `parts-output/<part>/<part>.stl`.
+
 ## mold layout
 
 The generator places the feed system, the ejector pins and the cooling channels around the cavity (the part scaled
