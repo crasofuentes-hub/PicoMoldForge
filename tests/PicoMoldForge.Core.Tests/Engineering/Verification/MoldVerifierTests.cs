@@ -88,6 +88,48 @@ public sealed class MoldVerifierTests
         Assert.StartsWith(mechanism, zone.Mechanism, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(0.05, MoldCheckStatus.Warn, 0)]
+    [InlineData(0.1, MoldCheckStatus.Fail, 1)]
+    [InlineData(0.15, MoldCheckStatus.Fail, 1)]
+    public void Zone_FreedByLessThanTheResolution_IsReportedButNotCounted(double travel, MoldCheckStatus expected, int zoneCount)
+    {
+        // The monoblock showed a 4.6 mm2 strip of crankcase wall held by an overshoot of 0.125 mm of the mesh at a
+        // sharp corner 18 mm below it: every face of the strip is freed by moving its steel point 0.053 mm, under the
+        // 0.1 mm resolution of the analysis. A zone that needs the resolution or more still fails.
+        var part = new[]
+        {
+            new MeshTriangle(new MeshVertex(0, 0, 0), new MeshVertex(10, 0, 0), new MeshVertex(0, 20, 0)),
+            new MeshTriangle(new MeshVertex(0, 0, 0), new MeshVertex(0, 20, 0), new MeshVertex(-10, 0, 0))
+        };
+        var access = new MeshMoldAccessResult(
+            new[]
+            {
+                new MoldAccessFace(0, 100, -1, 0, MoldFaceAccess.SideAction, travel, new MeshVertex(3, 6, 0)),
+                new MoldAccessFace(1, 50, -1, 0, MoldFaceAccess.SideAction, travel, new MeshVertex(-3, 6, 0))
+            },
+            PartingAxis.Z,
+            0,
+            1000,
+            false,
+            0.1);
+
+        var report = MoldVerifier.Verify(Input(MeshWallThicknessSamplerTests.GeneratorTestBox(), PartingAxis.Z, 0, halves: null) with
+        {
+            PartTriangles = part,
+            Access = access
+        });
+
+        Assert.Equal(expected, Status(report, "two-halves"));
+        Assert.Equal(zoneCount, report.ZoneCount);
+        Assert.Equal(expected == MoldCheckStatus.Warn ? MoldCheckStatus.Pass : MoldCheckStatus.Fail, report.Status);
+
+        if (expected == MoldCheckStatus.Warn)
+        {
+            Assert.Contains("under the 0.1 mm resolution of the analysis", Detail(report, "two-halves"), StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public void Halves_WithTheSteelEachSystemShouldRemove_Pass()
     {
