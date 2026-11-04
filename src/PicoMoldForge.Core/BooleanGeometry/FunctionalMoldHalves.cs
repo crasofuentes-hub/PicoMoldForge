@@ -104,7 +104,9 @@ public sealed record MoldHalfSystemVolume(string System, double RemovedVolumeMm3
 
 /// <summary>
 /// One functional half: its file, its volume after the cavity is cut and at the end, what each system changed, and its
-/// extent along the split axis (to see what crosses the parting plane).
+/// extent along the split axis (to see what crosses the parting plane). <paramref name="IslandsRemoved"/> pieces
+/// smaller than one voxel (<paramref name="IslandVolumeMm3"/> in all) were left out of the file: voxel debris where a
+/// face of the part lies within mesh noise of the parting plane.
 /// </summary>
 public sealed record FunctionalMoldHalfResult(
     string Role,
@@ -115,7 +117,9 @@ public sealed record FunctionalMoldHalfResult(
     IReadOnlyList<MoldHalfSystemVolume> Systems,
     double MinAlongAxisMm,
     double MaxAlongAxisMm,
-    int TriangleCount);
+    int TriangleCount,
+    int IslandsRemoved = 0,
+    double IslandVolumeMm3 = 0);
 
 /// <summary>
 /// The two functional halves and the steel they share (<paramref name="OverlapVolumeMm3"/>, measured with each half

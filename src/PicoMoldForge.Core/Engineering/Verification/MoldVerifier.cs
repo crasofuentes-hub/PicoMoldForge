@@ -365,12 +365,18 @@ public static class MoldVerifier
             return Check("halves-mesh", MeshTitle, MoldCheckStatus.NotRun, missing ?? "The half STL files were not read.");
         }
 
-        var parts = new[] { (halves.Moving.Role, MeshIntegrity.Measure(moving.Triangles)), (halves.Fixed.Role, MeshIntegrity.Measure(fixedHalf.Triangles)) };
+        var parts = new[] { (halves.Moving.Role, MeshIntegrity.Measure(moving.Triangles), halves.Moving), (halves.Fixed.Role, MeshIntegrity.Measure(fixedHalf.Triangles), halves.Fixed) };
         var broken = parts.Where(p => p.Item2.Triangles == 0 || p.Item2.OpenEdges > 0 || p.Item2.Pieces != 1).ToArray();
         var pinched = parts.Where(p => p.Item2.NonManifoldEdges > 0).ToArray();
         var text = string.Join("; ", parts.Select(p => Invariant(
             $"{p.Role} half: {p.Item2.Triangles} triangles, {p.Item2.OpenEdges} open edges, {p.Item2.Pieces} piece(s), {p.Item2.NonManifoldEdges} edges in more than two triangles") +
+            (p.Item3.IslandsRemoved > 0 ? Invariant($", {p.Item3.IslandsRemoved} island(s) under one voxel ({p.Item3.IslandVolumeMm3:0.####} mm3) left out of the file") : string.Empty) +
+            (p.Item2.Pieces > 1 ? " (other pieces: " + string.Join(", ", p.Item2.PieceList.Skip(1).Take(4).Select(x => Piece(x, Math.Sign(p.Item2.PieceList[0].VolumeMm3)))) + ")" : string.Empty) +
             (p.Item2.NonManifoldNear.Count > 0 ? " (near " + string.Join(", ", p.Item2.NonManifoldNear.Select(v => Invariant($"({v.X:0.#}, {v.Y:0.#}, {v.Z:0.#})"))) + ")" : string.Empty)));
+
+        // A piece wound against the largest one is a void inside the solid.
+        static string Piece(MeshPiece piece, int solidSign) => Invariant(
+            $"{(Math.Sign(piece.VolumeMm3) == -solidSign && solidSign != 0 ? "a void of" : "a solid of")} {Math.Abs(piece.VolumeMm3):0.####} mm3 at X {piece.Min.X:0.#}..{piece.Max.X:0.#}, Y {piece.Min.Y:0.#}..{piece.Max.Y:0.#}, Z {piece.Min.Z:0.#}..{piece.Max.Z:0.#}");
 
         if (broken.Length > 0)
         {

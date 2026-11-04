@@ -300,6 +300,12 @@ public sealed class MoldVerifierTests
             var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, Halves(0, 0, movingPath, fixedPath)) with { Layout = null });
 
             Assert.Equal(expected, Status(report, "halves-mesh"));
+
+            if (moving == "two pieces")
+            {
+                // The second piece is named with its volume and where it is.
+                Assert.Contains("(other pieces: a solid of 162000 mm3 at X -40..0, Y -40..50, Z 0..45)", Detail(report, "halves-mesh"), StringComparison.Ordinal);
+            }
         }
         finally
         {

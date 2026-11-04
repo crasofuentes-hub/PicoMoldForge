@@ -60,6 +60,50 @@ public sealed class MeshIntegrityTests
     }
 
     [Fact]
+    public void Pieces_ComeLargestFirst_WithTheirVolumeAndBox()
+    {
+        var triangles = MoldVerifierTests.BoxMesh(20, 0, 0, 22, 1, 1).Concat(MoldVerifierTests.BoxMesh(0, 0, 0, 10, 5, 8)).ToArray();
+
+        var pieces = MeshIntegrity.Measure(triangles).PieceList;
+
+        Assert.Equal(2, pieces.Count);
+        Assert.Equal(400, pieces[0].VolumeMm3, 9);
+        Assert.Equal(2, pieces[1].VolumeMm3, 9);
+        Assert.Equal(20, pieces[1].Min.X, 9);
+        Assert.Equal(22, pieces[1].Max.X, 9);
+    }
+
+    [Theory]
+    [InlineData(0.2, 1, 0.008)]
+    [InlineData(1.5, 0, 0.0)]
+    public void Islands_SmallerThanTheLimitAreLeftOut(double side, int removed, double removedVolume)
+    {
+        // A 0.2 mm cube (0.008 mm3) next to the half is voxel debris under a 1 mm3 limit; a 1.5 mm cube (3.375 mm3)
+        // is a real piece and stays, for the verification to see.
+        var half = MoldVerifierTests.BoxMesh(0, 0, 0, 10, 5, 8);
+        var triangles = half.Concat(MoldVerifierTests.BoxMesh(20, 0, 0, 20 + side, side, side)).ToArray();
+
+        var (kept, count, volume) = MeshIslands.Remove(triangles, 1.0);
+
+        Assert.Equal(removed, count);
+        Assert.Equal(removedVolume, volume, 9);
+        Assert.Equal(triangles.Length - (removed * 12), kept.Count);
+        Assert.Equal(1 + (1 - removed), MeshIntegrity.Measure(kept).Pieces);
+    }
+
+    [Fact]
+    public void Islands_NeverTheLargestPiece()
+    {
+        // Only one piece, smaller than the limit: it is the solid, not an island.
+        var triangles = MoldVerifierTests.BoxMesh(0, 0, 0, 0.5, 0.5, 0.5);
+
+        var (kept, count, _) = MeshIslands.Remove(triangles, 1.0);
+
+        Assert.Equal(0, count);
+        Assert.Equal(12, kept.Count);
+    }
+
+    [Fact]
     public void NoTriangles_IsNoPiece()
     {
         var result = MeshIntegrity.Measure(Array.Empty<MeshTriangle>());
