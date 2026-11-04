@@ -25,6 +25,9 @@ public sealed record MoldLayoutBlock(double MinX, double MinY, double MinZ, doub
 /// <item>Ejector pins land on faces of the moving half that face its back plate, flat within
 /// <paramref name="PinFlatToleranceMm"/>, the pin <paramref name="PinEdgeMarginMm"/> inside the face outline, pins at
 /// least <paramref name="PinSpacingToDiameter"/> x their diameter apart (centre to centre).</item>
+/// <item>Guide pins: <paramref name="GuidePinCount"/> pins of <paramref name="GuidePinDiameterMm"/> near the corners of the
+/// block, standing on the moving half and entering bores of the fixed half by
+/// <paramref name="GuidePinProtrusionToDiameter"/> x their diameter.</item>
 /// </list>
 /// </summary>
 public sealed record MoldLayoutOptions(
@@ -40,7 +43,10 @@ public sealed record MoldLayoutOptions(
     double PinEdgeMarginMm = 0.5,
     double PinSpacingToDiameter = 2.0,
     double PinFlatToleranceMm = 0.1,
-    int GateDirectionCount = 16);
+    int GateDirectionCount = 16,
+    double GuidePinDiameterMm = 8.0,
+    double GuidePinProtrusionToDiameter = 1.5,
+    int GuidePinCount = 4);
 
 /// <summary>
 /// What the layout is placed around: the cavity (the part scaled for shrinkage) and its split, the block, and the
@@ -61,7 +67,8 @@ public sealed record MoldLayoutRequest(
     double CoolingChannelSpacingMm,
     int CoolingChannelsPerHalf,
     double CoolingCavityClearanceMm,
-    double MoldEdgeClearanceMm);
+    double MoldEdgeClearanceMm,
+    double GuideBoreClearanceMm = 0.5);
 
 /// <summary>
 /// The two halves. <paramref name="MovingHalf"/> is +1 for the half on the positive side of the plane (it opens along
@@ -141,6 +148,21 @@ public sealed record MoldCoolingChannelLayout(
     double PinClearanceMm,
     double FeedClearanceMm);
 
+/// <summary>
+/// One guide pin: it stands on the moving half at <paramref name="Base"/> (on the parting plane) and reaches
+/// <paramref name="Tip"/> inside the fixed half, which has a bore of <paramref name="BoreDiameterMm"/> from the plane to
+/// <paramref name="BoreEnd"/>. <paramref name="ClearanceMm"/> is the smallest steel between the bore and the cavity or
+/// any other feature.
+/// </summary>
+public sealed record MoldGuidePinLayout(
+    string Id,
+    MoldLayoutPoint Base,
+    MoldLayoutPoint Tip,
+    double DiameterMm,
+    MoldLayoutPoint BoreEnd,
+    double BoreDiameterMm,
+    double ClearanceMm);
+
 /// <summary>The layout of the mold features around the cavity, with the notes that explain it.</summary>
 public sealed record MoldLayoutPlan(
     PartingAxis Axis,
@@ -152,4 +174,5 @@ public sealed record MoldLayoutPlan(
     double PinSpacingMm,
     IReadOnlyList<MoldCoolingChannelLayout> Channels,
     MoldLayoutOptions Options,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    IReadOnlyList<MoldGuidePinLayout> GuidePins);

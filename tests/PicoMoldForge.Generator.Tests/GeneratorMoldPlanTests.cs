@@ -190,6 +190,47 @@ public sealed class GeneratorMoldPlanTests
     }
 
     [Fact]
+    public void Report_OfTheEndToEndBox_VerifiesTheMoldWithoutTheHalves()
+    {
+        using var project = TestProject.Create();
+
+        var report = project.CreateReport();
+        var verification = report.Verification!;
+
+        // The box leaves two halves; the - half has no room for cooling (WARN); the checks on the halves need PicoGK.
+        Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Pass, verification.Status);
+        Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Pass, verification.Checks.Single(c => c.Id == "two-halves").Status);
+        Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Warn, verification.Checks.Single(c => c.Id == "cooling").Status);
+        Assert.Equal(4, verification.Checks.Count(c => c.Status == Core.Engineering.Verification.MoldCheckStatus.NotRun));
+        Assert.Equal(4, report.MoldLayout!.GuidePinCount);
+        Assert.Contains(report.Warnings, w => w.StartsWith("Mold verification: PASS", StringComparison.Ordinal));
+        Assert.Null(report.MoldHalves);
+    }
+
+    [Fact]
+    public void HalfFeatures_OfTheEndToEndBox_CutEverySystemIntoItsHalf()
+    {
+        using var project = TestProject.Create();
+
+        var plan = GeneratorMoldPlanner.Plan(project.Input, TestProject.AutomaticPlane(project.Input));
+        var features = GeneratorMoldLayout.HalfFeatures(plan.Layout, 1.0);
+
+        // Split X = 10, the - half moves: gate and runner in both halves, sprue and guide bores in the fixed + half,
+        // the ejector pin hole and the guide pins on the moving - half, the cooling in the + half.
+        Assert.Equal(2, features.Count(f => f.System == "Feed" && f.Half == 0));
+        Assert.Equal(1, features.Single(f => f.System == "Feed" && f.Half != 0).Half);
+        Assert.Equal(-1, features.Single(f => f.System == "EjectorPins").Half);
+        Assert.All(features.Where(f => f.System == "Cooling"), f => Assert.Equal(1, f.Half));
+        Assert.Equal(4, features.Count(f => f.System == "GuideBores" && f.Half == 1));
+        Assert.Equal(4, features.Count(f => f.System == "GuidePins" && f.Half == -1 && f.AddsSteel));
+
+        // The ejector pin hole runs one voxel into the cavity and one past the -X face of the block.
+        var pin = features.Single(f => f.System == "EjectorPins");
+        Assert.Equal(-0.11 + 1.0, pin.StartXmm, 6);
+        Assert.Equal(-26, pin.EndXmm, 6);
+    }
+
+    [Fact]
     public void Report_Geometry_MovesTheHalfThatHoldsThePocket()
     {
         using var project = TestProject.Create(extraJson: "\"parting\": { \"mode\": \"Geometry\" },\n          ");

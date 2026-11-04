@@ -71,6 +71,8 @@ public static class MoldLayoutPlanner
             })
             .ToList();
 
+        var guides = PlanGuides(context, request, options, halves.MovingHalf, feedSegments, pins, channels, notes);
+
         return new MoldLayoutPlan(
             request.Axis,
             request.PartingOffsetMm,
@@ -81,7 +83,8 @@ public static class MoldLayoutPlanner
             options.PinSpacingToDiameter * request.EjectorPinDiameterMm,
             channels,
             options,
-            notes);
+            notes,
+            guides);
     }
 
     private static void Validate(MoldLayoutRequest request, MoldLayoutOptions options)
@@ -1236,6 +1239,134 @@ public static class MoldLayoutPlanner
         return channels;
     }
 
+    // ---------------------------------------------------------------------------------------------------------
+    // Guide pins
+
+    /// <summary>
+    /// Guide pins near the corners of the block, inside the steel the block keeps from its faces: each stands on the
+    /// moving half and enters a bore of the fixed half. A corner whose bore would come within the feature clearance of
+    /// the cavity or of another feature moves towards the centre of the block, 1 mm at a time, while it stays out of the
+    /// cavity footprint; otherwise it gets no pin.
+    /// </summary>
+    private static List<MoldGuidePinLayout> PlanGuides(
+        Context c,
+        MoldLayoutRequest request,
+        MoldLayoutOptions o,
+        int moving,
+        IReadOnlyList<MoldFeedSegment> feed,
+        IReadOnlyList<MoldEjectorPinLayout> pins,
+        IReadOnlyList<MoldCoolingChannelLayout> channels,
+        List<string> notes)
+    {
+        var guides = new List<MoldGuidePinLayout>();
+
+        if (o.GuidePinCount <= 0 || !(o.GuidePinDiameterMm > 0))
+        {
+            return guides;
+        }
+
+        var diameter = o.GuidePinDiameterMm;
+        var boreRadius = (diameter / 2) + request.GuideBoreClearanceMm;
+        var fixedFace = moving > 0 ? c.H(c.BlockMin) : c.H(c.BlockMax);
+        var fixedThickness = Math.Abs(fixedFace - c.Offset);
+
+        // The pin enters the fixed half by 1.5 diameters, less when the half is thinner, leaving steel behind the bore.
+        var protrusion = Math.Min(o.GuidePinProtrusionToDiameter * diameter, fixedThickness - request.GuideBoreClearanceMm - o.FeatureClearanceMm);
+
+        if (protrusion < 0.5 * diameter)
+        {
+            notes.Add(Invariant($"Guide pins: none, the fixed half is {fixedThickness:0.##} mm thick behind the parting plane; a {diameter:0.##} mm pin needs {(0.5 * diameter) + request.GuideBoreClearanceMm + o.FeatureClearanceMm:0.##} mm."));
+            return guides;
+        }
+
+        var towards = -moving;
+        var inset = request.MoldEdgeClearanceMm + boreRadius;
+        var (u0, u1) = (c.U(c.BlockMin) + inset, c.U(c.BlockMax) - inset);
+        var (v0, v1) = (c.V(c.BlockMin) + inset, c.V(c.BlockMax) - inset);
+        var centreU = (c.U(c.BlockMin) + c.U(c.BlockMax)) / 2;
+        var centreV = (c.V(c.BlockMin) + c.V(c.BlockMax)) / 2;
+        var corners = new[] { (u0, v0), (u1, v0), (u1, v1), (u0, v1) }.Take(o.GuidePinCount).ToArray();
+        var skipped = new List<string>();
+
+        foreach (var (cu, cv) in corners)
+        {
+            var du = centreU - cu;
+            var dv = centreV - cv;
+            var length = Math.Sqrt((du * du) + (dv * dv));
+            MoldGuidePinLayout? placed = null;
+
+            for (var step = 0; step <= 200 && length > 0; step++)
+            {
+                var u = cu + (du / length * step);
+                var v = cv + (dv / length * step);
+
+                // Stop before the bore reaches over the cavity.
+                if (u + boreRadius > c.Min1 && u - boreRadius < c.Max1 && v + boreRadius > c.Min2 && v - boreRadius < c.Max2)
+                {
+                    break;
+                }
+
+                var basePoint = c.Point(u, v, c.Offset);
+                var boreEnd = c.Point(u, v, c.Offset + (towards * (protrusion + request.GuideBoreClearanceMm)));
+                var clearance = c.Bvh.SegmentDistance(basePoint, boreEnd) - boreRadius;
+                var b = ToPoint(basePoint);
+                var e = ToPoint(boreEnd);
+
+                foreach (var s in feed)
+                {
+                    clearance = Math.Min(clearance, Distance(b, e, s.Start, s.End) - boreRadius - (s.DiameterMm / 2));
+                }
+
+                foreach (var p in pins)
+                {
+                    clearance = Math.Min(clearance, Distance(b, e, p.Tip, p.End) - boreRadius - (p.DiameterMm / 2));
+                }
+
+                foreach (var ch in channels)
+                {
+                    clearance = Math.Min(clearance, Distance(b, e, ch.Start, ch.End) - boreRadius - (ch.DiameterMm / 2));
+                }
+
+                foreach (var g in guides)
+                {
+                    clearance = Math.Min(clearance, Distance(b, e, g.Base, g.BoreEnd) - (2 * boreRadius));
+                }
+
+                if (clearance >= o.FeatureClearanceMm)
+                {
+                    placed = new MoldGuidePinLayout(
+                        Invariant($"guide-pin-{guides.Count + 1:000}"),
+                        b,
+                        ToPoint(c.Point(u, v, c.Offset + (towards * protrusion))),
+                        diameter,
+                        e,
+                        2 * boreRadius,
+                        clearance);
+                    break;
+                }
+            }
+
+            if (placed is null)
+            {
+                skipped.Add(Invariant($"({c.AxisPlaneName(cu, cv)})"));
+            }
+            else
+            {
+                guides.Add(placed);
+            }
+        }
+
+        var text = Invariant($"Guide pins: {guides.Count} of {corners.Length} pins {diameter:0.##} mm near the corners of the block, standing on the moving half and entering {protrusion:0.##} mm into bores of {2 * boreRadius:0.##} mm in the fixed half; they align the halves and keep them parallel as the mold opens along {c.AxisName}.");
+
+        if (skipped.Count > 0)
+        {
+            text += " No room near the corner " + string.Join(", ", skipped) + Invariant($" (the bore would come within {o.FeatureClearanceMm:0.##} mm of the cavity or another feature).");
+        }
+
+        notes.Add(text);
+        return guides;
+    }
+
     /// <summary>Offsets across the cavity centre: 0, +s, -s, +2s, ... for an odd count; +s/2, -s/2, +3s/2, ... for an even one.</summary>
     private static IEnumerable<double> Offsets(int count, double spacing, double span)
     {
@@ -1451,6 +1582,10 @@ public static class MoldLayoutPlanner
         public Vec3d Point(double u, double v, double h) => (SideA * u) + (SideB * v) + (Pull * h);
 
         public Vec3d WithHeight(Vec3d p, double h) => Point(U(p), V(p), h);
+
+        /// <summary>A point of the plane written as its two in-plane coordinates, e.g. "Y 14.5, Z -10.5".</summary>
+        public string AxisPlaneName(double u, double v) =>
+            string.Create(CultureInfo.InvariantCulture, $"{MoldLayoutPlanner.AxisName(SideA)} {u:0.##}, {MoldLayoutPlanner.AxisName(SideB)} {v:0.##}");
 
         /// <summary>
         /// Smallest distance from the segment [p, q] to the faces of the block, leaving out the face on side

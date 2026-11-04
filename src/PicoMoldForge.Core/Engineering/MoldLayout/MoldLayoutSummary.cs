@@ -26,6 +26,7 @@ public sealed record MoldLayoutSummary(
     int EjectorPinCount,
     int RequestedEjectorPinCount,
     int CoolingChannelCount,
+    int GuidePinCount,
     decimal? MinimumFeedCavityClearanceMm,
     decimal? MinimumCoolingCavityClearanceMm,
     IReadOnlyList<MoldLayoutFeatureSummary> Features)
@@ -62,6 +63,12 @@ public sealed record MoldLayoutSummary(
             features.Add(new MoldLayoutFeatureSummary(channel.Id, "CoolingChannel", channel.Half, Rounded(channel.Start), Rounded(channel.End), Round(channel.DiameterMm)));
         }
 
+        foreach (var guide in plan.GuidePins)
+        {
+            features.Add(new MoldLayoutFeatureSummary(guide.Id, "GuidePin", plan.Halves.MovingHalf, Rounded(guide.Base), Rounded(guide.Tip), Round(guide.DiameterMm)));
+            features.Add(new MoldLayoutFeatureSummary(guide.Id.Replace("pin", "bore", StringComparison.Ordinal), "GuideBore", fixedHalf, Rounded(guide.Base), Rounded(guide.BoreEnd), Round(guide.BoreDiameterMm)));
+        }
+
         var feedClearances = plan.Feed?.Segments
             .Where(s => s.Type != GateSystemFeatureType.Gate)
             .Select(s => s.CavityClearanceMm)
@@ -75,6 +82,7 @@ public sealed record MoldLayoutSummary(
             plan.Pins.Count,
             plan.RequestedPinCount,
             plan.Channels.Count,
+            plan.GuidePins.Count,
             feedClearances.Length == 0 ? null : Round(feedClearances.Min()),
             plan.Channels.Count == 0 ? null : Round(plan.Channels.Min(c => c.CavityClearanceMm)),
             features);

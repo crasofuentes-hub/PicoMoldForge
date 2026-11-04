@@ -60,7 +60,7 @@ public sealed class GeneratorCommandLineApplicationTests
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Generation input validation: PASS", output.ToString());
             Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 11", output.ToString());
+            Assert.Contains("Artifacts generated: 13", output.ToString());
 
             Assert.True(File.Exists(Path.Combine(outputDirectory, "DiagnosticMesh.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "Cavity.stl")));
