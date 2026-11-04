@@ -238,11 +238,23 @@ align, while a channel has other positions.
 
 The launcher `scripts/run-mold-verification.ps1` (Windows PowerShell 5.1) runs the whole chain:
 
-1. Builds the solution and runs every test project (the PicoGK native tests of Parts included), reading each
-   project's result from its TRX file.
+1. Rebuilds the solution from scratch (`--no-incremental`) and runs every test project (the PicoGK native tests
+   of Parts included), reading each project's result from its TRX file.
 2. Designs the five Parts samples and generates a mold for each of them and for the repository sample box.
 3. Prints the verdict of every mold and leaves one ZIP on the Desktop: logs, TRX files, reports and the halves of
    the box and the spur gear. The other STL files stay in `mold-run/<date>/`.
+
+First Windows run (commit 44378c7): the build failed with CS0246 in `PicoFunctionalMoldHalvesGenerator.cs` (the
+types of `FunctionalMoldHalves.cs` were not found).
+
+- Cause: the clock of that computer ran about 12 hours behind. The run is dated 06:03 on a commit merged at 17:39
+  the same day.
+- The sources git wrote looked older than the Core binaries of an earlier build, so MSBuild skipped Core and
+  Core.Tests. The PicoGK project did compile, against the old Core.
+- Reproduced on Linux by dating the Core outputs after the sources: the same four errors, at the same lines. A
+  plain rebuild fails again. `--no-incremental` builds.
+- The launcher now always rebuilds from scratch. Its summary has a "Reloj" row that warns when the commit is dated
+  after the clock.
 
 The touching-faces fix of Parts (field zeros classified by a nudge, so touching features join) is merged with an
 edge-midpoint guard in the simplifier. Without the guard, the flange left rim chords 0.2675 mm off the surface;

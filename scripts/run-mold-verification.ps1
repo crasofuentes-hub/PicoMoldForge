@@ -1,9 +1,14 @@
 ﻿# PicoMoldForge - full mold verification for Windows PowerShell 5.1.
 #
-# Builds the solution (Release) and runs every test project (PicoGK native tests included). It then designs
-# the five Parts samples, generates a mold for each of them and for the repository sample (the 20 x 10 x 5 mm
-# box), and collects the verdict of every mold. Logs, reports and the halves of the box and the spur gear go
-# into one ZIP on the Desktop.
+# Rebuilds the solution from scratch (Release, --no-incremental) and runs every test project (PicoGK native
+# tests included). It then designs the five Parts samples, generates a mold for each of them and for the
+# repository sample (the 20 x 10 x 5 mm box), and collects the verdict of every mold. Logs, reports and the
+# halves of the box and the spur gear go into one ZIP on the Desktop.
+#
+# The build is never incremental: MSBuild skips a project whose outputs look newer than its sources, so with a
+# clock that runs behind (the sources git writes look older than the last build) it keeps old binaries, and a
+# project that does compile meets types that are not there. The summary says when the clock is behind the
+# commit.
 #
 # Usage (from the repository root):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-mold-verification.ps1
@@ -59,6 +64,19 @@ function Invoke-Logged {
     Get-Content -LiteralPath $logFile -Tail 25 | ForEach-Object { Write-Host ("   | " + $_) }
   }
   return $code
+}
+
+# Unix time of the commit of HEAD, read from the committer line of the commit object; 0 when git cannot tell.
+function Get-HeadCommitTime {
+  $lines = @(cmd /c ('git -C "' + $repoRoot + '" cat-file -p HEAD 2>nul'))
+  foreach ($line in $lines) {
+    if ($line.StartsWith("committer ")) {
+      $parts = $line.Split(' ')
+      $seconds = [long]0
+      if (($parts.Count -ge 3) -and [long]::TryParse($parts[$parts.Count - 2], [ref]$seconds)) { return $seconds }
+    }
+  }
+  return [long]0
 }
 
 # First line of the log that starts with the prefix, without the prefix; empty when there is none.
@@ -171,6 +189,20 @@ if (-not $hasSdk9) {
 }
 Add-Result "Herramientas" "PASS" ("dotnet en " + $dotnet.Source)
 
+# The clock: a commit dated after "now" means the clock of this computer runs behind. The full rebuild below does
+# not depend on it; the row says so, with both dates.
+$commitTime = Get-HeadCommitTime
+$nowTime = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$nowLocal = Get-Date -Format "yyyy-MM-dd HH:mm"
+if ($commitTime -le 0) {
+  Add-Result "Reloj" "AVISO" ("no se pudo leer la fecha del commit; el reloj marca " + $nowLocal)
+} elseif ($commitTime -gt ($nowTime + 300)) {
+  $commitLocal = [DateTimeOffset]::FromUnixTimeSeconds($commitTime).ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+  Add-Result "Reloj" "AVISO" ("atrasado: el commit es del " + $commitLocal + " y el reloj marca " + $nowLocal + "; se compila todo desde cero")
+} else {
+  Add-Result "Reloj" "PASS" ("no esta atrasado respecto al commit; marca " + $nowLocal)
+}
+
 # 2. A viewer or a generator left running keeps its files open and the build cannot replace them.
 $running = @()
 try {
@@ -186,8 +218,8 @@ foreach ($process in $running) {
 }
 if ($running.Count -gt 0) { Start-Sleep -Seconds 2 }
 
-# 3. Build
-$code = Invoke-Logged "Compilar la solucion (Release)" ('dotnet build "' + (Join-Path $repoRoot "PicoMoldForge.sln") + '" -c Release') "build.log"
+# 3. Build, from scratch (see the header: an incremental build trusts the clock)
+$code = Invoke-Logged "Compilar la solucion desde cero (Release)" ('dotnet build "' + (Join-Path $repoRoot "PicoMoldForge.sln") + '" -c Release --no-incremental') "build.log"
 if ($code -ne 0) {
   if (Select-String -LiteralPath (Join-Path $logDir "build.log") -Pattern "MSB3027|MSB3021|being used by another process" -Quiet) {
     Add-Result "Compilacion" "FAIL" "otro programa tiene abierto un archivo de la compilacion (el log dice cual): cierralo y vuelve a correr"
@@ -199,7 +231,7 @@ if ($code -ne 0) {
   Show-Summary | Out-Null
   exit 1
 }
-Add-Result "Compilacion" "PASS" "Release"
+Add-Result "Compilacion" "PASS" "Release, desde cero"
 
 # 4. Tests of every project, the PicoGK native tests of Parts included (opt-in variable)
 if ($SkipTests) {

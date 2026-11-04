@@ -88,7 +88,7 @@ BooleanCavity.stl is a functional preliminary boolean cavity proof. It is still 
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-mold-verification.ps1
 
-builds the solution, runs every test project (PicoGK native tests included), designs the five Parts samples, generates a mold for each of them (`PicoMoldForge.Generator --mold-stl`) and for the sample box, prints the verdict of every mold and leaves a ZIP of logs and reports on the Desktop.
+rebuilds the solution from scratch (never incremental: with a clock that runs behind, an incremental build keeps old binaries), runs every test project (PicoGK native tests included), designs the five Parts samples, generates a mold for each of them (`PicoMoldForge.Generator --mold-stl`) and for the sample box, prints the verdict of every mold and leaves a ZIP of logs and reports on the Desktop.
 
 ## Functional mold halves
 
