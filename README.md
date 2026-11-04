@@ -92,7 +92,7 @@ rebuilds the solution from scratch (never incremental: with a clock that runs be
 
 ## Functional mold halves
 
-Besides the plain split (BooleanCoreSide.stl, BooleanCavitySide.stl), the generator writes MovingHalf.stl and FixedHalf.stl: the halves with the feed, the ejector pin holes, the cooling channels and the guide bores cut and the guide pins added. The report's FunctionalMoldAlpha.Verification gives the verdict of the final mold (whether the part leaves two halves, or which zone needs a slide or a lifter; whether every system was cut; whether the halves overlap or open along the axis), also printed as "Mold verification: PASS|FAIL ...". See docs/FUNCTIONAL_MOLD_PLAN.md.
+Besides the plain split (BooleanCoreSide.stl, BooleanCavitySide.stl), the generator writes MovingHalf.stl and FixedHalf.stl: the halves with the feed, the ejector pin holes, the cooling channels and the guide bores cut and the guide pins added. The report's FunctionalMoldAlpha.Verification gives the verdict of the final mold (whether the part leaves two halves, or which zone needs a slide or a lifter; whether every system was cut, by volume and on the axes of its features; whether the halves overlap or open along the axis; whether each half is a closed surface in one piece), also printed as "Mold verification: PASS|FAIL ...". See docs/FUNCTIONAL_MOLD_PLAN.md.
 
 ## Boolean split mold halves
 

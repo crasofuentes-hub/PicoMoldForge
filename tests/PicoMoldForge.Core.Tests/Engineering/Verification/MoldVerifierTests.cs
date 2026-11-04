@@ -22,7 +22,8 @@ public sealed class MoldVerifierTests
         var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, halves: null));
 
         Assert.Equal(MoldCheckStatus.Pass, report.Status);
-        Assert.StartsWith("PASS: every check run passed (4 not run", report.Summary, StringComparison.Ordinal);
+        Assert.Equal("PASS: every check run passed (5 not run without the PicoGK halves).", report.Summary);
+        Assert.Equal(MoldCheckStatus.NotRun, Status(report, "halves-mesh"));
         Assert.Equal(MoldCheckStatus.Pass, Status(report, "two-halves"));
         Assert.Equal(MoldCheckStatus.Pass, Status(report, "feed"));
         Assert.Equal(MoldCheckStatus.Pass, Status(report, "ejector-pins"));
@@ -192,6 +193,186 @@ public sealed class MoldVerifierTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(true, MoldCheckStatus.Pass)]
+    [InlineData(false, MoldCheckStatus.Fail)]
+    public void HalvesCut_TestsTheAxisOfEachFeatureAgainstTheHalf(bool drilled, MoldCheckStatus expected)
+    {
+        // A 6 mm cooling channel along X through the + half. The volume figure says the steel was removed; the axis
+        // points say whether the half really has the hole: a drilled half (a square tunnel round the axis) passes, a
+        // solid half fails, whatever the volume reads.
+        var box = MeshWallThicknessSamplerTests.GeneratorTestBox();
+        var channel = new MoldHalfFeature("c1", "Cooling", 1, -40, 5, 25, 60, 5, 25, 3, RoundEnds: false, AddsSteel: false);
+        var directory = Path.Combine(Path.GetTempPath(), $"picomoldforge-verify-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            var moving = Path.Combine(directory, "moving.stl");
+            var fixedPath = Path.Combine(directory, "fixed.stl");
+            BinaryStlTriangleWriter.Write(moving, drilled ? BoxWithTunnelAlongX(-40, -40, 0, 60, 50, 45, 2, 22, 8, 28) : BoxMesh(-40, -40, 0, 60, 50, 45));
+            BinaryStlTriangleWriter.Write(fixedPath, BoxMesh(-40, -40, -40, 60, 50, 0));
+            var halves = Halves(movingRemoved: Math.PI * 9 * 100, overlap: 0, moving, fixedPath);
+
+            var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, halves, new[] { channel }) with { Layout = null });
+
+            Assert.Equal(expected, Status(report, "halves-cut"));
+            Assert.Contains(drilled ? "4 of 4 points on the axes empty" : "0 of 4 points on the axes empty", Detail(report, "halves-cut"), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void HalvesCut_ConfirmsAThinFeatureByItsAxis()
+    {
+        // A 1.6 mm hole at 1 mm voxels: half a voxel over its surface (about 253 mm3) exceeds its volume (about
+        // 201 mm3), so the volume alone cannot tell it from no hole; its axis, 0.8 mm from its wall, still can.
+        var box = MeshWallThicknessSamplerTests.GeneratorTestBox();
+        var hole = new MoldHalfFeature("h1", "Cooling", 1, -40, 5, 25, 60, 5, 25, 0.8, RoundEnds: false, AddsSteel: false);
+        var directory = Path.Combine(Path.GetTempPath(), $"picomoldforge-verify-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            var moving = Path.Combine(directory, "moving.stl");
+            var fixedPath = Path.Combine(directory, "fixed.stl");
+            BinaryStlTriangleWriter.Write(moving, BoxWithTunnelAlongX(-40, -40, 0, 60, 50, 45, 4.2, 24.2, 5.8, 25.8));
+            BinaryStlTriangleWriter.Write(fixedPath, BoxMesh(-40, -40, -40, 60, 50, 0));
+
+            var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, Halves(Math.PI * 0.64 * 100, 0, moving, fixedPath), new[] { hole }) with { Layout = null });
+
+            Assert.Equal(MoldCheckStatus.Pass, Status(report, "halves-cut"));
+            Assert.DoesNotContain("cannot tell", Detail(report, "halves-cut"), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void HalvesCut_WarnsWhenTheVoxelsCannotTellAFeatureFromNone()
+    {
+        // A 0.4 mm hole at 1 mm voxels: half a voxel over its surface is more than its volume, and its axis lies within
+        // half a voxel of its wall, so neither the volume nor the axis can confirm it.
+        var box = MeshWallThicknessSamplerTests.GeneratorTestBox();
+        var hole = new MoldHalfFeature("h1", "Cooling", 1, -40, 5, 25, 60, 5, 25, 0.2, RoundEnds: false, AddsSteel: false);
+
+        var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, Halves(movingRemoved: Math.PI * 0.04 * 100, overlap: 0), new[] { hole }) with { Layout = null });
+
+        Assert.Equal(MoldCheckStatus.Warn, Status(report, "halves-cut"));
+        Assert.Contains("(cannot tell at 1 mm voxels)", Detail(report, "halves-cut"), StringComparison.Ordinal);
+        Assert.Contains("1 with a warning: halves-cut.", report.Summary, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("closed", MoldCheckStatus.Pass)]
+    [InlineData("pinched", MoldCheckStatus.Warn)]
+    [InlineData("open", MoldCheckStatus.Fail)]
+    [InlineData("two pieces", MoldCheckStatus.Fail)]
+    public void HalvesMesh_SaysWhetherEachHalfIsAClosedSurfaceInOnePiece(string moving, MoldCheckStatus expected)
+    {
+        var box = MeshWallThicknessSamplerTests.GeneratorTestBox();
+        var directory = Path.Combine(Path.GetTempPath(), $"picomoldforge-verify-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            var solid = BoxMesh(-40, -40, 0, 60, 50, 45);
+            var triangles = moving switch
+            {
+                "pinched" => BoxMesh(-40, -40, 0, 10, 5, 45).Concat(BoxMesh(10, 5, 0, 60, 50, 45)).ToArray(),
+                "open" => solid.Skip(1).ToArray(),
+                "two pieces" => BoxMesh(-40, -40, 0, 0, 50, 45).Concat(BoxMesh(10, -40, 0, 60, 50, 45)).ToArray(),
+                _ => solid
+            };
+            var movingPath = Path.Combine(directory, "moving.stl");
+            var fixedPath = Path.Combine(directory, "fixed.stl");
+            BinaryStlTriangleWriter.Write(movingPath, triangles);
+            BinaryStlTriangleWriter.Write(fixedPath, BoxMesh(-40, -40, -40, 60, 50, 0));
+
+            var report = MoldVerifier.Verify(Input(box, PartingAxis.Z, 0, Halves(0, 0, movingPath, fixedPath)) with { Layout = null });
+
+            Assert.Equal(expected, Status(report, "halves-mesh"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>The closed surface of an axis-aligned box, outward triangles.</summary>
+    internal static MeshTriangle[] BoxMesh(double x0, double y0, double z0, double x1, double y1, double z1)
+    {
+        var t = new List<MeshTriangle>();
+        Quad(t, new(x0, y0, z0), new(x0, y1, z0), new(x1, y1, z0), new(x1, y0, z0), 0, 0, -1);
+        Quad(t, new(x0, y0, z1), new(x1, y0, z1), new(x1, y1, z1), new(x0, y1, z1), 0, 0, 1);
+        Quad(t, new(x0, y0, z0), new(x1, y0, z0), new(x1, y0, z1), new(x0, y0, z1), 0, -1, 0);
+        Quad(t, new(x0, y1, z0), new(x0, y1, z1), new(x1, y1, z1), new(x1, y1, z0), 0, 1, 0);
+        Quad(t, new(x0, y0, z0), new(x0, y0, z1), new(x0, y1, z1), new(x0, y1, z0), -1, 0, 0);
+        Quad(t, new(x1, y0, z0), new(x1, y1, z0), new(x1, y1, z1), new(x1, y0, z1), 1, 0, 0);
+        return t.ToArray();
+    }
+
+    /// <summary>
+    /// A box with a square tunnel along X, y in [ty0, ty1] and z in [tz0, tz1]: one closed surface of genus one.
+    /// </summary>
+    internal static MeshTriangle[] BoxWithTunnelAlongX(double x0, double y0, double z0, double x1, double y1, double z1, double ty0, double tz0, double ty1, double tz1)
+    {
+        var t = new List<MeshTriangle>();
+        MeshVertex[] Outer(double x) => new MeshVertex[] { new(x, y0, z0), new(x, y1, z0), new(x, y1, z1), new(x, y0, z1) };
+        MeshVertex[] Inner(double x) => new MeshVertex[] { new(x, ty0, tz0), new(x, ty1, tz0), new(x, ty1, tz1), new(x, ty0, tz1) };
+
+        foreach (var (x, nx) in new[] { (x0, -1.0), (x1, 1.0) })
+        {
+            var o = Outer(x);
+            var i = Inner(x);
+
+            for (var k = 0; k < 4; k++)
+            {
+                Quad(t, o[k], o[(k + 1) % 4], i[(k + 1) % 4], i[k], nx, 0, 0);
+            }
+        }
+
+        Quad(t, new(x0, y0, z0), new(x0, y1, z0), new(x1, y1, z0), new(x1, y0, z0), 0, 0, -1);
+        Quad(t, new(x0, y0, z1), new(x1, y0, z1), new(x1, y1, z1), new(x0, y1, z1), 0, 0, 1);
+        Quad(t, new(x0, y0, z0), new(x1, y0, z0), new(x1, y0, z1), new(x0, y0, z1), 0, -1, 0);
+        Quad(t, new(x0, y1, z0), new(x0, y1, z1), new(x1, y1, z1), new(x1, y1, z0), 0, 1, 0);
+
+        // The tunnel walls face into the tunnel (out of the steel).
+        Quad(t, new(x0, ty0, tz0), new(x1, ty0, tz0), new(x1, ty1, tz0), new(x0, ty1, tz0), 0, 0, 1);
+        Quad(t, new(x0, ty0, tz1), new(x0, ty1, tz1), new(x1, ty1, tz1), new(x1, ty0, tz1), 0, 0, -1);
+        Quad(t, new(x0, ty0, tz0), new(x0, ty0, tz1), new(x1, ty0, tz1), new(x1, ty0, tz0), 1, 0, 0);
+        Quad(t, new(x0, ty1, tz0), new(x1, ty1, tz0), new(x1, ty1, tz1), new(x0, ty1, tz1), -1, 0, 0);
+        return t.ToArray();
+    }
+
+    /// <summary>Two triangles of the quad a-b-c-d, wound so their normal points along (nx, ny, nz).</summary>
+    private static void Quad(List<MeshTriangle> t, MeshVertex a, MeshVertex b, MeshVertex c, MeshVertex d, double nx, double ny, double nz)
+    {
+        var ux = b.X - a.X;
+        var uy = b.Y - a.Y;
+        var uz = b.Z - a.Z;
+        var vx = c.X - a.X;
+        var vy = c.Y - a.Y;
+        var vz = c.Z - a.Z;
+        var dot = (((uy * vz) - (uz * vy)) * nx) + (((uz * vx) - (ux * vz)) * ny) + (((ux * vy) - (uy * vx)) * nz);
+
+        if (dot >= 0)
+        {
+            t.Add(new MeshTriangle(a, b, c));
+            t.Add(new MeshTriangle(a, c, d));
+        }
+        else
+        {
+            t.Add(new MeshTriangle(a, c, b));
+            t.Add(new MeshTriangle(a, d, c));
         }
     }
 

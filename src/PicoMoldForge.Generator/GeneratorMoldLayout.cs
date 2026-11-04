@@ -57,7 +57,8 @@ public static class GeneratorMoldLayout
             input.Cooling.ChannelCount,
             (double)input.Cooling.MinimumClearanceMm,
             (double)input.Cooling.MinimumClearanceMm,
-            GuideBoreClearanceMm: Math.Max(0.5, (double)input.Config.VoxelResolutionMm));
+            GuideBoreClearanceMm: Math.Max(0.5, (double)input.Config.VoxelResolutionMm),
+            VoxelGridMm: (double)input.Config.VoxelResolutionMm);
     }
 
     /// <summary>

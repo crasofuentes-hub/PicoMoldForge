@@ -1294,6 +1294,16 @@ public static class MoldLayoutPlanner
         var inset = request.MoldEdgeClearanceMm + boreRadius;
         var (u0, u1) = (c.U(c.BlockMin) + inset, c.U(c.BlockMax) - inset);
         var (v0, v1) = (c.V(c.BlockMin) + inset, c.V(c.BlockMax) - inset);
+
+        // The halves are sampled on a grid of VoxelGridMm. A pin or bore whose circle passes through grid nodes (round
+        // corners and radii put it on four of them) came out of the Windows run with edges shared by more than two
+        // triangles at exactly those nodes. A corner a quarter of a voxel inside the grid keeps the circles off them.
+        if (request.VoxelGridMm > 0)
+        {
+            (u0, u1) = (OffGrid(u0, 1, request.VoxelGridMm), OffGrid(u1, -1, request.VoxelGridMm));
+            (v0, v1) = (OffGrid(v0, 1, request.VoxelGridMm), OffGrid(v1, -1, request.VoxelGridMm));
+        }
+
         var centreU = (c.U(c.BlockMin) + c.U(c.BlockMax)) / 2;
         var centreV = (c.V(c.BlockMin) + c.V(c.BlockMax)) / 2;
         var corners = new[] { (u0, v0), (u1, v0), (u1, v1), (u0, v1) }.Take(o.GuidePinCount).ToArray();
@@ -1371,6 +1381,16 @@ public static class MoldLayoutPlanner
 
         notes.Add(text);
         return guides;
+    }
+
+    /// <summary>
+    /// The position nearest to <paramref name="x"/>, on its inner side (<paramref name="inward"/> +1: towards larger
+    /// values, -1: towards smaller ones), that lies a quarter of <paramref name="grid"/> off the grid.
+    /// </summary>
+    internal static double OffGrid(double x, int inward, double grid)
+    {
+        var k = inward > 0 ? Math.Ceiling((x - (0.25 * grid)) / grid) : Math.Floor((x + (0.25 * grid)) / grid);
+        return (k * grid) + (inward * 0.25 * grid);
     }
 
     /// <summary>Offsets across the cavity centre: 0, +s, -s, +2s, ... for an odd count; +s/2, -s/2, +3s/2, ... for an even one.</summary>

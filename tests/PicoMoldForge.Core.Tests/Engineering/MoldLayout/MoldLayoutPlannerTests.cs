@@ -279,6 +279,42 @@ public sealed class MoldLayoutPlannerTests
         Assert.Contains(plan.Notes, n => n.Contains("does not cut the cavity", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData(-47.0, 1, 1.0, -46.75)]
+    [InlineData(47.0, -1, 1.0, 46.75)]
+    [InlineData(-46.9, 1, 1.0, -46.75)]
+    [InlineData(46.7, -1, 1.0, 45.75)]
+    [InlineData(10.0, 1, 0.5, 10.125)]
+    public void OffGrid_MovesInwardToAQuarterVoxelOffTheGrid(double x, int inward, double grid, double expected)
+    {
+        Assert.Equal(expected, MoldLayoutPlanner.OffGrid(x, inward, grid), 9);
+    }
+
+    [Fact]
+    public void GuidePins_WithAVoxelGrid_StayAQuarterVoxelOffIt()
+    {
+        // The corners of the roomy block fall on whole millimetres; at 1 mm voxels the circles of the pins and bores
+        // would pass through grid nodes. With the grid given, every centre sits a quarter voxel off it, further inside.
+        var request = Request(MeshWallThicknessSamplerTests.GeneratorTestBox(), PartingAxis.Z, 0, RoomyBlock);
+        var onGrid = MoldLayoutPlanner.Plan(request);
+        var offGrid = MoldLayoutPlanner.Plan(request with { VoxelGridMm = 1.0 });
+
+        Assert.Equal(onGrid.GuidePins.Count, offGrid.GuidePins.Count);
+        Assert.NotEmpty(offGrid.GuidePins);
+
+        foreach (var guide in offGrid.GuidePins)
+        {
+            foreach (var coordinate in new[] { guide.Base.X, guide.Base.Y })
+            {
+                var fraction = coordinate - Math.Floor(coordinate);
+                Assert.True(Math.Abs(fraction - 0.25) < 1e-9 || Math.Abs(fraction - 0.75) < 1e-9, $"{guide.Id}: {coordinate}");
+            }
+
+            Assert.True(guide.Base.X > RoomyBlock.MinX + 15 && guide.Base.X < RoomyBlock.MaxX - 15, guide.Id);
+            Assert.True(guide.Base.Y > RoomyBlock.MinY + 15 && guide.Base.Y < RoomyBlock.MaxY - 15, guide.Id);
+        }
+    }
+
     private static MoldLayoutRequest Request(IReadOnlyList<MeshTriangle> cavity, PartingAxis axis, double offset, MoldLayoutBlock block) =>
         new(cavity, axis, offset, block, MaximumWallThicknessMm: 5, EjectorPinDiameterMm: 4, EjectorPinCount: 4,
             CoolingChannelDiameterMm: 6, CoolingChannelSpacingMm: 15, CoolingChannelsPerHalf: 3, CoolingCavityClearanceMm: 10,
