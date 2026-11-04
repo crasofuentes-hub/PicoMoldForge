@@ -28,9 +28,64 @@ public static class GeneratorCommandLineApplication
             return RunGenerateAll(args, output, error);
         }
 
+        if (Contains(args, "--mold-stl"))
+        {
+            return RunMoldStl(args, output, error);
+        }
+
         error.WriteLine("Unknown command.");
         WriteHelp(error);
         return 2;
+    }
+
+    /// <summary>
+    /// A mold for one part STL: writes the project of <see cref="GeneratorPartMoldProject"/> into the output folder and
+    /// generates it into its "mold" subfolder.
+    /// </summary>
+    private static int RunMoldStl(string[] args, TextWriter output, TextWriter error)
+    {
+        var partPath = TryReadOptionValue(args, "--mold-stl");
+        var outputDirectory = TryReadOptionValue(args, "--output");
+        var resin = TryReadOptionValue(args, "--resin");
+        var shrinkage = TryReadOptionValue(args, "--resin-shrinkage");
+        var voxel = TryReadOptionValue(args, "--voxel");
+
+        if (string.IsNullOrWhiteSpace(partPath) || string.IsNullOrWhiteSpace(outputDirectory))
+        {
+            error.WriteLine("Missing required option: --mold-stl <part.stl> --output <folder>");
+            WriteHelp(error);
+            return 2;
+        }
+
+        string projectPath;
+
+        try
+        {
+            var options = new GeneratorPartMoldOptions(
+                ResinName: string.Equals(resin, "none", StringComparison.OrdinalIgnoreCase) ? null : resin ?? "ABS",
+                ResinShrinkageRate: shrinkage is null ? null : decimal.Parse(shrinkage, System.Globalization.CultureInfo.InvariantCulture),
+                VoxelResolutionMm: voxel is null ? 1.0m : decimal.Parse(voxel, System.Globalization.CultureInfo.InvariantCulture));
+            var resolvedOutput = Path.GetFullPath(outputDirectory);
+            var moldDirectory = Path.Combine(resolvedOutput, GeneratorPartMoldProject.MoldDirectoryName);
+
+            if (Contains(args, "--clean-output") && Directory.Exists(moldDirectory))
+            {
+                Directory.Delete(moldDirectory, recursive: true);
+                output.WriteLine($"Cleaned output directory: {moldDirectory}");
+            }
+
+            projectPath = GeneratorPartMoldProject.Write(partPath, resolvedOutput, options);
+            output.WriteLine($"Mold project: {projectPath}");
+            output.WriteLine($"Mold project settings: {GeneratorPartMoldProject.Describe(projectPath)}");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or FormatException or UnauthorizedAccessException)
+        {
+            error.WriteLine("Generation pipeline: FAIL");
+            error.WriteLine(ex.Message);
+            return 1;
+        }
+
+        return Generate(projectPath, outputOverride: null, cleanOutput: false, output, error);
     }
 
     private static int RunGenerateAll(string[] args, TextWriter output, TextWriter error)
@@ -53,6 +108,11 @@ public static class GeneratorCommandLineApplication
             return 2;
         }
 
+        return Generate(configPath, outputOverride, cleanOutput, output, error);
+    }
+
+    private static int Generate(string configPath, string? outputOverride, bool cleanOutput, TextWriter output, TextWriter error)
+    {
         try
         {
             var validator = new GeneratorPipelineInputValidator();
@@ -164,12 +224,17 @@ public static class GeneratorCommandLineApplication
         output.WriteLine("  PicoMoldForge.Generator.exe --self-test");
         output.WriteLine("  PicoMoldForge.Generator.exe --help");
         output.WriteLine("  PicoMoldForge.Generator.exe --config <path> --generate-all [--clean-output] [--output <path>]");
+        output.WriteLine("  PicoMoldForge.Generator.exe --mold-stl <part.stl> --output <folder> [--resin <name>|none] [--resin-shrinkage <rate>] [--voxel <mm>] [--clean-output]");
         output.WriteLine();
         output.WriteLine("Options:");
         output.WriteLine("  --config <path>     Path to the generator project JSON config.");
         output.WriteLine("  --generate-all      Generate the full preliminary output package.");
         output.WriteLine("  --clean-output      Delete the resolved output directory before generation.");
         output.WriteLine("  --output <path>     Override the outputDirectory configured in the project JSON.");
+        output.WriteLine("  --mold-stl <path>   Write a mold project for a part STL into --output (project.json, split by geometry,");
+        output.WriteLine("                      block sized for the features) and generate it into its mold subfolder.");
+        output.WriteLine("  --resin <name>      Part resin for --mold-stl (default ABS; none = material.shrinkageRate 0.011).");
+        output.WriteLine("  --voxel <mm>        Voxel size for --mold-stl (default 1.0).");
         output.WriteLine();
         output.WriteLine("Safety:");
         output.WriteLine("  Output paths cannot be filesystem roots, the current working directory, the config directory, user profile root, Program Files root, system directory, or an existing file.");

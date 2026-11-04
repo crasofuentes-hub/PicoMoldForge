@@ -25,9 +25,10 @@ namespace PicoMoldForge.Core.Engineering.MoldLayout;
 /// inside the face (exact distance to the face outline) and nothing of the part lies in its column between the face
 /// and the back plate. Pins are spread by farthest-point selection from the point farthest from the centre of the
 /// places that fit.</item>
+/// <item>Guide pins near the corners of the block, on the moving half, entering bores of the fixed half.</item>
 /// <item>Cooling: straight channels drilled through the block along the longer in-plane side of the cavity, in each
 /// half beyond the cavity by the cavity clearance, spaced across and centred on the cavity; a position is skipped when
-/// it does not keep its clearances from the cavity, the pins, the feed or the block.</item>
+/// it does not keep its clearances from the cavity, the pins, the feed, the guide pins or the block.</item>
 /// </list>
 /// Distances between features and from features to the cavity are exact (segment to segment and segment to
 /// triangle), so a measured clearance is the real one of the straight centrelines.
@@ -60,7 +61,10 @@ public static class MoldLayoutPlanner
         var feed = PlanFeed(context, request, options, halves.MovingHalf, notes, cancellationToken);
         var feedSegments = feed?.Segments ?? Array.Empty<MoldFeedSegment>();
         var pins = PlanPins(context, request, options, halves.MovingHalf, feedSegments, notes, cancellationToken);
-        var channels = PlanCooling(context, request, options, feedSegments, pins, notes, cancellationToken);
+
+        // Guide pins before cooling: without them the halves do not align, while a channel has other positions.
+        var guides = PlanGuides(context, request, options, halves.MovingHalf, feedSegments, pins, notes);
+        var channels = PlanCooling(context, request, options, feedSegments, pins, guides, notes, cancellationToken);
 
         pins = pins
             .Select(pin => pin with
@@ -70,8 +74,6 @@ public static class MoldLayoutPlanner
                     : channels.Min(channel => Distance(pin.Tip, pin.End, channel.Start, channel.End) - (pin.DiameterMm / 2) - (channel.DiameterMm / 2))
             })
             .ToList();
-
-        var guides = PlanGuides(context, request, options, halves.MovingHalf, feedSegments, pins, channels, notes);
 
         return new MoldLayoutPlan(
             request.Axis,
@@ -1106,6 +1108,7 @@ public static class MoldLayoutPlanner
         MoldLayoutOptions o,
         IReadOnlyList<MoldFeedSegment> feed,
         IReadOnlyList<MoldEjectorPinLayout> pins,
+        IReadOnlyList<MoldGuidePinLayout> guides,
         List<string> notes,
         CancellationToken cancellationToken)
     {
@@ -1184,6 +1187,9 @@ public static class MoldLayoutPlanner
                 var channelClearance = placed.Count == 0
                     ? double.PositiveInfinity
                     : placed.Min(x => Distance(startPoint, endPoint, x.Start, x.End) - diameter);
+                var guideClearance = guides.Count == 0
+                    ? double.PositiveInfinity
+                    : guides.Min(g => Distance(startPoint, endPoint, g.Base, g.BoreEnd) - rc - (g.BoreDiameterMm / 2));
                 var where = Invariant($"{acrossName} = {position:0.##}");
 
                 if (cavity < cavityClearance)
@@ -1207,6 +1213,12 @@ public static class MoldLayoutPlanner
                 if (channelClearance < o.FeatureClearanceMm)
                 {
                     skipped.Add(Invariant($"{where} (too close to another channel)"));
+                    continue;
+                }
+
+                if (guideClearance < o.FeatureClearanceMm)
+                {
+                    skipped.Add(Invariant($"{where} (would pass {Math.Max(0, guideClearance):0.##} mm from a guide pin)"));
                     continue;
                 }
 
@@ -1255,7 +1267,6 @@ public static class MoldLayoutPlanner
         int moving,
         IReadOnlyList<MoldFeedSegment> feed,
         IReadOnlyList<MoldEjectorPinLayout> pins,
-        IReadOnlyList<MoldCoolingChannelLayout> channels,
         List<string> notes)
     {
         var guides = new List<MoldGuidePinLayout>();
@@ -1320,11 +1331,6 @@ public static class MoldLayoutPlanner
                 foreach (var p in pins)
                 {
                     clearance = Math.Min(clearance, Distance(b, e, p.Tip, p.End) - boreRadius - (p.DiameterMm / 2));
-                }
-
-                foreach (var ch in channels)
-                {
-                    clearance = Math.Min(clearance, Distance(b, e, ch.Start, ch.End) - boreRadius - (ch.DiameterMm / 2));
                 }
 
                 foreach (var g in guides)

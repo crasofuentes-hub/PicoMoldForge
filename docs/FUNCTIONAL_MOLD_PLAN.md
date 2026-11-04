@@ -196,3 +196,14 @@ Linux results without the halves:
 - End-to-end box, split X = 10: PASS. The - half has no cooling, so that check is a WARN.
 - T-shape split under its bar: FAIL, with two zones that need a slide (test
   `TShape_SplitUnderTheBar_FailsWithTheZonesThatNeedASlide`).
+
+## F8. Parts to mold
+
+`PicoMoldForge.Generator --mold-stl <part.stl> --output <folder>` writes a project for the part (split by geometry,
+resin ABS unless given, a block with room for every feature) and generates its mold. On the end-to-end box the
+project validates and the mold plan passes every check that runs without PicoGK, both halves cooled (test
+`Write_ForTheBox_ValidatesAndLeavesRoomForEveryFeature`).
+
+Rule refuted on the way: cooling placed before the guide pins. On that box a channel of the fixed half took the
+corners, and two of the four guide pins found no room. Guide pins now come first: without them the halves do not
+align, while a channel has other positions.
