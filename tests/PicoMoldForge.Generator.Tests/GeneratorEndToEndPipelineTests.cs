@@ -32,7 +32,7 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, exitCode);
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 11", output.ToString());
+            Assert.Contains("Artifacts generated: 13", output.ToString());
 
             Assert.True(File.Exists(Path.Combine(outputDirectory, "DiagnosticMesh.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "ShrinkageScaledPart.stl")));
@@ -45,6 +45,9 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.True(File.Exists(Path.Combine(outputDirectory, "LatticeDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "MoldSystemDiagnostic.stl")));
             Assert.True(File.Exists(Path.Combine(outputDirectory, "GateRunnerSprueDiagnostic.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "MovingHalf.stl")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "FixedHalf.stl")));
+            Assert.Contains("Mold verification: PASS", output.ToString());
             Assert.True(File.Exists(Path.Combine(outputDirectory, "FinalProjectReport.json")));
 
             using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(outputDirectory, "FinalProjectReport.json")));
@@ -138,6 +141,15 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(1, moldLayout.GetProperty("EjectorPinCount").GetInt32());
             Assert.Equal(2, moldLayout.GetProperty("CoolingChannelCount").GetInt32());
             Assert.Equal(0, alpha.GetProperty("ClearanceMatrix").GetProperty("CollisionRiskPairCount").GetInt32());
+
+            // The functional halves were cut and checked: the box leaves two halves and every check passes.
+            var verification = alpha.GetProperty("Verification");
+            Assert.Equal("Pass", verification.GetProperty("Status").GetString());
+            Assert.All(
+                verification.GetProperty("Checks").EnumerateArray(),
+                check => Assert.NotEqual("Fail", check.GetProperty("Status").GetString()));
+            Assert.Equal("Pass", verification.GetProperty("Checks").EnumerateArray().Single(c => c.GetProperty("Id").GetString() == "halves-cut").GetProperty("Status").GetString());
+            Assert.True(alpha.GetProperty("MoldHalves").GetProperty("Moving").GetProperty("FinalVolumeMm3").GetDouble() > 0);
         }
         finally
         {

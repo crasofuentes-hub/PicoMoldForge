@@ -88,6 +88,27 @@ public sealed class GeneratorPipelineRunner
             PartingPlaneOffsetMm: moldPlan.MoldPartingOffsetMm,
             VoxelSizeMm: voxelSizeMm));
 
+        // The functional halves: the split halves with every placed feature cut, and the guide pins added.
+        FunctionalMoldHalvesResult? moldHalves = null;
+
+        if (moldPlan.Layout is not null)
+        {
+            moldHalves = new PicoFunctionalMoldHalvesGenerator().Generate(new FunctionalMoldHalvesRequest(
+                CavitySourcePath: cavityPartPath,
+                OutputDirectory: input.ResolvedOutputDirectory,
+                BlockBounds: input.BooleanMoldBlockBounds,
+                SplitAxis: moldPlan.SplitAxis,
+                PartingPlaneOffsetMm: moldPlan.MoldPartingOffsetMm,
+                MovingHalf: moldPlan.Layout.Halves.MovingHalf,
+                Features: GeneratorMoldLayout.HalfFeatures(moldPlan.Layout, voxelSizeMm),
+                VoxelSizeMm: voxelSizeMm));
+            warnings.Add("MovingHalf.stl and FixedHalf.stl are the mold halves with the feed, ejector pin holes, cooling channels and guide bores cut and the guide pins added; BooleanCoreSide.stl and BooleanCavitySide.stl stay the plain split.");
+        }
+        else
+        {
+            warnings.Add("MovingHalf.stl and FixedHalf.stl are not written: the cavity does not fit in the mold block, so no feature was placed.");
+        }
+
         // The configuration-only cooling plan still validates the cooling request as before; the channels drawn and
         // reported are the ones placed around the cavity by the mold layout.
         var coolingRequest = CreateCoolingRequest(input);
@@ -168,7 +189,8 @@ public sealed class GeneratorPipelineRunner
             partAnalysis,
             coolingPlan,
             dfamReport,
-            moldPlan);
+            moldPlan,
+            moldHalves);
         var finalReport = reportBuilder.Build(
             projectName: input.Config.ProjectName,
             manifest: manifest,
@@ -184,7 +206,7 @@ public sealed class GeneratorPipelineRunner
         var jsonWriter = new FinalReportJsonWriter();
         jsonWriter.WriteToFile(finalReport, finalReportPath);
 
-        var generatedArtifacts = new[]
+        var generatedArtifacts = new List<string>
         {
             diagnosticMeshPath,
             cavityPartPath,
@@ -199,6 +221,12 @@ public sealed class GeneratorPipelineRunner
             finalReportPath
         };
 
+        if (moldHalves is not null)
+        {
+            generatedArtifacts.Add(moldHalves.Moving.OutputPath);
+            generatedArtifacts.Add(moldHalves.Fixed.OutputPath);
+        }
+
         foreach (var artifact in generatedArtifacts)
         {
             if (!File.Exists(artifact))
@@ -212,7 +240,8 @@ public sealed class GeneratorPipelineRunner
             input.ResolvedOutputDirectory,
             finalReportPath,
             generatedArtifacts,
-            warnings);
+            warnings,
+            functionalMoldAlpha.Verification?.Summary);
     }
 
 

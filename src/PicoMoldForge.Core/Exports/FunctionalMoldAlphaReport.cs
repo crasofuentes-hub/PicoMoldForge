@@ -1,3 +1,4 @@
+using PicoMoldForge.Core.BooleanGeometry;
 using PicoMoldForge.Core.Engineering.Clearance;
 using PicoMoldForge.Core.Engineering.CoolingGeometry;
 using PicoMoldForge.Core.Engineering.DraftAnalysis;
@@ -7,6 +8,7 @@ using PicoMoldForge.Core.Engineering.MoldLayout;
 using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.Shrinkage;
 using PicoMoldForge.Core.Engineering.Undercuts;
+using PicoMoldForge.Core.Engineering.Verification;
 using PicoMoldForge.Core.Engineering.WallThickness;
 
 namespace PicoMoldForge.Core.Exports;
@@ -25,7 +27,9 @@ public sealed record FunctionalMoldAlphaReport(
     PartingPlaneScore? PartingPlane = null,
     MoldBlockFitSummary? MoldBlockFit = null,
     MoldShrinkageSummary? Shrinkage = null,
-    MoldLayoutSummary? MoldLayout = null)
+    MoldLayoutSummary? MoldLayout = null,
+    FunctionalMoldHalvesResult? MoldHalves = null,
+    MoldVerificationReport? Verification = null)
 {
     public IReadOnlyList<string> Validate()
     {

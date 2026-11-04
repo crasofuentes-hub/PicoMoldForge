@@ -92,6 +92,12 @@ public static class GeneratorCommandLineApplication
                 outputOverride);
 
             output.WriteLine("Generation pipeline: PASS");
+
+            if (result.MoldVerification is not null)
+            {
+                output.WriteLine($"Mold verification: {result.MoldVerification}");
+            }
+
             output.WriteLine($"Final report: {result.FinalReportPath}");
             output.WriteLine($"Run manifest: {runManifestPath}");
             output.WriteLine($"Artifacts generated: {result.GeneratedArtifacts.Count}");

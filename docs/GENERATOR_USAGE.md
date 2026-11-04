@@ -284,6 +284,13 @@ and clearances, and `MoldLayout` lists every feature (centreline and diameter). 
 - Cooling: see "cooling configuration".
 - Cooling channels, pins and feed keep 3 mm of steel between them.
 
+- Guide pins: four 8 mm pins near the corners of the block, on the moving half, entering 1.5 diameters into bores of
+  the fixed half (radial play max(0.5 mm, one voxel)).
+
+The generator cuts every placed feature into MovingHalf.stl and FixedHalf.stl and adds the guide pins; the report
+gives the steel each system removed (`MoldHalves`) and the verdict of the final mold (`Verification`, also printed
+as "Mold verification: PASS|FAIL ..."). See docs/FUNCTIONAL_MOLD_PLAN.md, F6 and F7.
+
 These are rules of thumb (defaults of `MoldLayoutOptions`), not values from a standard. When a system cannot be
 placed, the warnings say where and why (for example "no room in the block for the sprue clear of the cavity"), the
 summaries count it, and the diagnostic STL is written empty. The layout is skipped when the cavity does not fit in

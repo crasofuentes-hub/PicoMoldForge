@@ -5,4 +5,5 @@ public sealed record GeneratorPipelineRunResult(
     string OutputDirectory,
     string FinalReportPath,
     IReadOnlyList<string> GeneratedArtifacts,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    string? MoldVerification = null);

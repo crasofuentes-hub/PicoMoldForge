@@ -1,4 +1,5 @@
 using System.Globalization;
+using PicoMoldForge.Core.BooleanGeometry;
 using PicoMoldForge.Core.Cooling;
 using PicoMoldForge.Core.Engineering.Clearance;
 using PicoMoldForge.Core.Engineering.CoolingGeometry;
@@ -55,7 +56,55 @@ public static class GeneratorMoldLayout
             (double)input.Cooling.ChannelSpacingMm,
             input.Cooling.ChannelCount,
             (double)input.Cooling.MinimumClearanceMm,
-            (double)input.Cooling.MinimumClearanceMm);
+            (double)input.Cooling.MinimumClearanceMm,
+            GuideBoreClearanceMm: Math.Max(0.5, (double)input.Config.VoxelResolutionMm));
+    }
+
+    /// <summary>
+    /// The features cut into (or added to) the functional halves: the feed when it works (gate and runner in both
+    /// halves, sprue in the fixed half), the ejector pin holes in the moving half, the cooling channels in their half,
+    /// the guide bores in the fixed half and the guide pins on the moving half. Holes run one voxel past the faces they
+    /// open through, and guide pins one voxel into the moving half, so no skin of steel is left by the voxels.
+    /// </summary>
+    public static IReadOnlyList<MoldHalfFeature> HalfFeatures(MoldLayoutPlan? layout, double voxelSizeMm)
+    {
+        var features = new List<MoldHalfFeature>();
+
+        if (layout is null)
+        {
+            return features;
+        }
+
+        var moving = layout.Halves.MovingHalf;
+        var fixedHalf = -moving;
+        var v = Math.Max(0, voxelSizeMm);
+
+        if (layout.Feed is { IsFeasible: true } feed)
+        {
+            foreach (var s in feed.Segments)
+            {
+                var sprue = s.Type == GateSystemFeatureType.Sprue;
+                features.Add(HalfFeature(s.Id, "Feed", sprue ? fixedHalf : 0, s.Start, s.End, s.DiameterMm / 2, roundEnds: !sprue, adds: false, 0, sprue ? v : 0));
+            }
+        }
+
+        foreach (var pin in layout.Pins)
+        {
+            features.Add(HalfFeature(pin.Id, "EjectorPins", moving, pin.Tip, pin.End, pin.DiameterMm / 2, roundEnds: false, adds: false, v, v));
+        }
+
+        foreach (var channel in layout.Channels)
+        {
+            features.Add(HalfFeature(channel.Id, "Cooling", channel.Half, channel.Start, channel.End, channel.DiameterMm / 2, roundEnds: false, adds: false, v, v));
+        }
+
+        foreach (var guide in layout.GuidePins)
+        {
+            features.Add(HalfFeature(guide.Id.Replace("pin", "bore", StringComparison.Ordinal), "GuideBores", fixedHalf, guide.Base, guide.BoreEnd, guide.BoreDiameterMm / 2, roundEnds: false, adds: false, v, 0));
+            features.Add(HalfFeature(guide.Id, "GuidePins", moving, guide.Base, guide.Tip, guide.DiameterMm / 2, roundEnds: false, adds: true, v, 0));
+        }
+
+        return features;
     }
 
     /// <summary>
@@ -237,6 +286,28 @@ public static class GeneratorMoldLayout
         {
             yield return note;
         }
+    }
+
+    /// <summary>A feature from start to end, lengthened by <paramref name="beforeStart"/> and <paramref name="afterEnd"/>.</summary>
+    private static MoldHalfFeature HalfFeature(string id, string system, int half, MoldLayoutPoint start, MoldLayoutPoint end, double radius, bool roundEnds, bool adds, double beforeStart, double afterEnd)
+    {
+        var (dx, dy, dz) = (end.X - start.X, end.Y - start.Y, end.Z - start.Z);
+        var length = Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
+        var (ux, uy, uz) = length > 0 ? (dx / length, dy / length, dz / length) : (0.0, 0.0, 0.0);
+
+        return new MoldHalfFeature(
+            id,
+            system,
+            half,
+            start.X - (ux * beforeStart),
+            start.Y - (uy * beforeStart),
+            start.Z - (uz * beforeStart),
+            end.X + (ux * afterEnd),
+            end.Y + (uy * afterEnd),
+            end.Z + (uz * afterEnd),
+            radius,
+            roundEnds,
+            adds);
     }
 
     private static ClearanceFeature Feature(string id, ClearanceFeatureKind kind, MoldLayoutPoint start, MoldLayoutPoint end, double diameter, decimal required, string? group) =>

@@ -84,6 +84,10 @@ Example:
 BooleanCavity.stl is a functional preliminary boolean cavity proof. It is still not production-certified mold tooling.
 
 
+## Functional mold halves
+
+Besides the plain split (BooleanCoreSide.stl, BooleanCavitySide.stl), the generator writes MovingHalf.stl and FixedHalf.stl: the halves with the feed, the ejector pin holes, the cooling channels and the guide bores cut and the guide pins added. The report's FunctionalMoldAlpha.Verification gives the verdict of the final mold (whether the part leaves two halves, or which zone needs a slide or a lifter; whether every system was cut; whether the halves overlap or open along the axis), also printed as "Mold verification: PASS|FAIL ...". See docs/FUNCTIONAL_MOLD_PLAN.md.
+
 ## Boolean split mold halves
 
 PicoMoldForge now generates two additional functional-preliminary mold half artifacts:

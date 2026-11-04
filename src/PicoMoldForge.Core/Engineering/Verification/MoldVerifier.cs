@@ -1,0 +1,562 @@
+using System.Globalization;
+using PicoMoldForge.Core.BooleanGeometry;
+using PicoMoldForge.Core.Engineering.Clearance;
+using PicoMoldForge.Core.Engineering.MoldAccess;
+using PicoMoldForge.Core.Engineering.MoldLayout;
+using PicoMoldForge.Core.Engineering.Separation;
+using PicoMoldForge.Core.Engineering.WallThickness;
+
+namespace PicoMoldForge.Core.Engineering.Verification;
+
+public enum MoldCheckStatus
+{
+    Pass = 0,
+    Warn = 1,
+    Fail = 2,
+    NotRun = 3
+}
+
+/// <summary>One check of the final mold: what was measured and the verdict.</summary>
+public sealed record MoldVerificationCheck(string Id, string Title, MoldCheckStatus Status, string Detail);
+
+/// <summary>
+/// A connected zone of the part that two halves cannot release: the mechanism it needs, its area and its bounding box
+/// (part coordinates, mm), and the longest side travel of its faces (0 for an undercut no straight slide releases).
+/// </summary>
+public sealed record MoldTrappedZone(
+    string Mechanism,
+    double AreaMm2,
+    MoldLayoutPoint Min,
+    MoldLayoutPoint Max,
+    double SideTravelMm,
+    int Half);
+
+/// <summary>The verdict on the final mold: PASS when no check fails; every check, and the zones that need more than two halves.</summary>
+public sealed record MoldVerificationReport(
+    MoldCheckStatus Status,
+    string Summary,
+    IReadOnlyList<MoldVerificationCheck> Checks,
+    IReadOnlyList<MoldTrappedZone> Zones,
+    int ZoneCount);
+
+/// <summary>
+/// What the verifier looks at. <paramref name="Access"/> is the draft/undercut access of the part on its split;
+/// <paramref name="HalfFeatures"/> the features cut into (or added to) the halves; <paramref name="Halves"/> the halves
+/// built by PicoGK (null when they were not built: those checks are not run).
+/// </summary>
+public sealed record MoldVerificationInput(
+    IReadOnlyList<MeshTriangle> PartTriangles,
+    MeshMoldAccessResult? Access,
+    bool CavityInsideBlock,
+    MoldLayoutPlan? Layout,
+    ClearanceCollisionMatrixSummary? Clearances,
+    IReadOnlyList<MeshTriangle> CavityTriangles,
+    MoldLayoutBlock Block,
+    PartingAxis Axis,
+    double MoldPartingOffsetMm,
+    IReadOnlyList<MoldHalfFeature> HalfFeatures,
+    FunctionalMoldHalvesResult? Halves,
+    double VoxelSizeMm);
+
+/// <summary>
+/// Verification of the final mold (pure .NET): whether the part leaves two halves (or which zones need a slide, a
+/// lifter or a design change), whether the feed, ejector pins, cooling and guide pins are in place with their
+/// clearances, and, on the halves built by PicoGK, whether each system removed the steel it should (Monte Carlo
+/// estimate of the exact volume, within half a voxel of its surface), whether the halves overlap, whether they open
+/// along the axis, and whether their cavity follows the cavity mesh (distance from points of the cavity mesh to the
+/// halves, 90th percentile within one voxel).
+/// </summary>
+public static class MoldVerifier
+{
+    private const int SamplesPerSystem = 40000;
+    private const int CavitySamples = 3000;
+    private const int MaxReportedZones = 10;
+
+    public static MoldVerificationReport Verify(MoldVerificationInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        var checks = new List<MoldVerificationCheck>();
+        var zones = new List<MoldTrappedZone>();
+
+        checks.Add(input.CavityInsideBlock
+            ? Check("cavity-in-block", "The cavity lies inside the mold block", MoldCheckStatus.Pass, "Every point of the cavity is inside the block.")
+            : Check("cavity-in-block", "The cavity lies inside the mold block", MoldCheckStatus.Fail, "The cavity touches or crosses a face of the block; see the block fit."));
+
+        checks.Add(TwoHalves(input, zones));
+        checks.AddRange(Layout(input));
+        checks.AddRange(Halves(input));
+
+        var status = checks.Any(c => c.Status == MoldCheckStatus.Fail) ? MoldCheckStatus.Fail : MoldCheckStatus.Pass;
+        var notRun = checks.Count(c => c.Status == MoldCheckStatus.NotRun);
+        var failed = checks.Where(c => c.Status == MoldCheckStatus.Fail).Select(c => c.Title.ToLowerInvariant()).ToArray();
+        var summary = status == MoldCheckStatus.Pass
+            ? "PASS: " + (notRun > 0 ? Invariant($"every check run passed ({notRun} not run without the PicoGK halves).") : "every check passed.")
+            : "FAIL: " + string.Join("; ", failed) + ".";
+
+        var ordered = zones.OrderByDescending(z => z.AreaMm2).ToArray();
+        return new MoldVerificationReport(status, summary, checks, ordered.Take(MaxReportedZones).ToArray(), ordered.Length);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+
+    private static MoldVerificationCheck TwoHalves(MoldVerificationInput input, List<MoldTrappedZone> zones)
+    {
+        const string Title = "The part leaves the mold in two halves";
+
+        if (input.Access is null)
+        {
+            return Check("two-halves", Title, MoldCheckStatus.NotRun, "No draft/undercut access of the part was given.");
+        }
+
+        var faces = input.Access.Faces;
+        var total = input.Access.TotalAreaMm2;
+        var blocked = faces.Where(f => f.Access is MoldFaceAccess.Trapped or MoldFaceAccess.SideAction).ToArray();
+        var blockedArea = blocked.Sum(f => f.AreaMm2);
+        var tolerance = Math.Max(1.0, 0.001 * total);
+
+        if (blockedArea <= tolerance)
+        {
+            return Check("two-halves", Title, MoldCheckStatus.Pass, Invariant($"Every face releases along the opening direction of its half ({blockedArea:0.##} mm2 held, within {tolerance:0.##} mm2 of mesh noise)."));
+        }
+
+        zones.AddRange(Zones(input.PartTriangles, blocked));
+        var text = Invariant($"{blockedArea:0.#} mm2 ({100 * blockedArea / total:0.#} % of the surface) cannot leave the two halves, in {zones.Count} zone(s)");
+        var largest = zones.OrderByDescending(z => z.AreaMm2).Take(3)
+            .Select(z => Invariant($"{z.AreaMm2:0.#} mm2 at X {z.Min.X:0.#}..{z.Max.X:0.#}, Y {z.Min.Y:0.#}..{z.Max.Y:0.#}, Z {z.Min.Z:0.#}..{z.Max.Z:0.#}: {z.Mechanism}"));
+        return Check("two-halves", Title, MoldCheckStatus.Fail, text + ": " + string.Join("; ", largest) + ".");
+    }
+
+    /// <summary>Faces that touch (share a vertex) form one zone.</summary>
+    private static IEnumerable<MoldTrappedZone> Zones(IReadOnlyList<MeshTriangle> triangles, IReadOnlyList<MoldAccessFace> faces)
+    {
+        var parent = Enumerable.Range(0, faces.Count).ToArray();
+
+        int Find(int x)
+        {
+            while (parent[x] != x)
+            {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+
+            return x;
+        }
+
+        var owner = new Dictionary<MeshVertex, int>();
+
+        for (var k = 0; k < faces.Count; k++)
+        {
+            var t = triangles[faces[k].TriangleIndex];
+
+            foreach (var v in new[] { t.A, t.B, t.C })
+            {
+                if (owner.TryGetValue(v, out var other))
+                {
+                    parent[Find(k)] = Find(other);
+                }
+                else
+                {
+                    owner[v] = k;
+                }
+            }
+        }
+
+        foreach (var group in Enumerable.Range(0, faces.Count).GroupBy(Find))
+        {
+            var members = group.Select(k => faces[k]).ToArray();
+            var vertices = group.SelectMany(k =>
+            {
+                var t = triangles[faces[k].TriangleIndex];
+                return new[] { t.A, t.B, t.C };
+            }).ToArray();
+            var trapped = members.Any(f => f.Access == MoldFaceAccess.Trapped);
+            var travel = members.Where(f => f.Access == MoldFaceAccess.SideAction).Select(f => f.SideTravelMm).DefaultIfEmpty(0).Max();
+            var mechanism = trapped
+                ? "an undercut no straight slide releases (a lifter, a collapsible core or a design change)"
+                : Invariant($"a side action (slide) with at least {travel:0.##} mm of travel");
+            var half = members.Sum(f => f.Half * f.AreaMm2) >= 0 ? 1 : -1;
+
+            yield return new MoldTrappedZone(
+                mechanism,
+                members.Sum(f => f.AreaMm2),
+                new MoldLayoutPoint(vertices.Min(v => v.X), vertices.Min(v => v.Y), vertices.Min(v => v.Z)),
+                new MoldLayoutPoint(vertices.Max(v => v.X), vertices.Max(v => v.Y), vertices.Max(v => v.Z)),
+                trapped ? 0 : travel,
+                half);
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+
+    private static IEnumerable<MoldVerificationCheck> Layout(MoldVerificationInput input)
+    {
+        var layout = input.Layout;
+
+        if (layout is null)
+        {
+            yield return Check("layout", "Feed, ejector pins, cooling and guide pins are placed", MoldCheckStatus.Fail, "No layout was placed (the cavity does not fit in the block).");
+            yield break;
+        }
+
+        var feed = layout.Feed;
+        yield return feed is null
+            ? Check("feed", "The feed reaches the cavity", MoldCheckStatus.Fail, "No gate could be placed on the cavity outline in the parting plane.")
+            : feed.IsFeasible
+                ? Check("feed", "The feed reaches the cavity", MoldCheckStatus.Pass, Invariant($"Edge gate {feed.Segments[0].DiameterMm:0.##} mm into a {feed.EntryThicknessMm:0.##} mm section; runner and sprue at least {feed.Segments.Where(s => s.Type != GateSystem.GateSystemFeatureType.Gate).Min(s => s.CavityClearanceMm):0.##} mm from the cavity and inside the block."))
+                : Check("feed", "The feed reaches the cavity", MoldCheckStatus.Fail, string.Join("; ", feed.Problems) + ".");
+
+        yield return layout.RequestedPinCount <= 0
+            ? Check("ejector-pins", "Ejector pins push the part off the moving half", MoldCheckStatus.Warn, "No ejector pins configured.")
+            : layout.Pins.Count == 0
+                ? Check("ejector-pins", "Ejector pins push the part off the moving half", MoldCheckStatus.Fail, "No face of the moving half takes a pin of the configured diameter; see the ejector pin note.")
+                : Check("ejector-pins", "Ejector pins push the part off the moving half", MoldCheckStatus.Pass, Invariant($"{layout.Pins.Count} of {layout.RequestedPinCount} pins on the moving half, stroke {layout.Pins[0].StrokeMm:0.##} mm."));
+
+        var positive = layout.Channels.Count(c => c.Half > 0);
+        var negative = layout.Channels.Count(c => c.Half < 0);
+        yield return positive > 0 && negative > 0
+            ? Check("cooling", "Both halves are cooled", MoldCheckStatus.Pass, Invariant($"{positive} channel(s) in the + half and {negative} in the - half, at least {layout.Channels.Min(c => c.CavityClearanceMm):0.##} mm from the cavity."))
+            : Check("cooling", "Both halves are cooled", MoldCheckStatus.Warn, Invariant($"{positive} channel(s) in the + half and {negative} in the - half; see the cooling note (a half without channels cools slowly)."));
+
+        yield return layout.GuidePins.Count >= 2
+            ? Check("guide-pins", "Guide pins locate the halves", MoldCheckStatus.Pass, Invariant($"{layout.GuidePins.Count} guide pins {layout.GuidePins[0].DiameterMm:0.##} mm in bores of {layout.GuidePins[0].BoreDiameterMm:0.##} mm."))
+            : Check("guide-pins", "Guide pins locate the halves", MoldCheckStatus.Warn, Invariant($"{layout.GuidePins.Count} guide pin(s): the halves need at least two to locate; see the guide pin note."));
+
+        if (input.Clearances is { } clearances)
+        {
+            yield return clearances.CollisionRiskPairCount == 0
+                ? Check("clearances", "Features keep their steel between them", MoldCheckStatus.Pass, Invariant($"{clearances.PairCount} pairs of features, the closest {clearances.MinimumSurfaceClearanceMm:0.##} mm apart."))
+                : Check("clearances", "Features keep their steel between them", MoldCheckStatus.Fail, Invariant($"{clearances.CollisionRiskPairCount} pairs of features are closer than their clearance."));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+
+    private static IEnumerable<MoldVerificationCheck> Halves(MoldVerificationInput input)
+    {
+        var halves = input.Halves;
+
+        if (halves is null)
+        {
+            const string Why = "The halves were not built (they need the PicoGK runtime).";
+            yield return Check("halves-cut", "Each system removed the steel it should", MoldCheckStatus.NotRun, Why);
+            yield return Check("halves-overlap", "The halves do not overlap", MoldCheckStatus.NotRun, Why);
+            yield return Check("halves-open", "The halves open along the axis", MoldCheckStatus.NotRun, Why);
+            yield return Check("cavity-shape", "The cavity in the halves follows the cavity mesh", MoldCheckStatus.NotRun, Why);
+            yield break;
+        }
+
+        var voxel = input.VoxelSizeMm;
+        yield return Cut(input, halves, voxel);
+
+        var o = input.MoldPartingOffsetMm;
+        var plane = PlaneArea(input.Block, input.Axis);
+        var overlapTolerance = 0.05 * voxel * plane;
+        yield return halves.OverlapVolumeMm3 <= overlapTolerance
+            ? Check("halves-overlap", "The halves do not overlap", MoldCheckStatus.Pass, Invariant($"{halves.OverlapVolumeMm3:0.##} mm3 shared, within {overlapTolerance:0.##} mm3 (0.05 voxel over the parting plane)."))
+            : Check("halves-overlap", "The halves do not overlap", MoldCheckStatus.Fail, Invariant($"{halves.OverlapVolumeMm3:0.##} mm3 shared, more than {overlapTolerance:0.##} mm3: the halves would collide."));
+
+        var protrusion = input.Layout?.GuidePins.Select(g => Math.Abs(Height(g.Tip, input.Axis) - o)).DefaultIfEmpty(0).Max() ?? 0;
+        var moving = halves.Moving;
+        var fixedHalf = halves.Fixed;
+        var m = moving.Half;
+        var movingBeyond = m > 0 ? o - moving.MinAlongAxisMm : moving.MaxAlongAxisMm - o;
+        var fixedBeyond = m > 0 ? fixedHalf.MaxAlongAxisMm - o : o - fixedHalf.MinAlongAxisMm;
+        yield return movingBeyond <= protrusion + voxel && fixedBeyond <= voxel
+            ? Check("halves-open", "The halves open along the axis", MoldCheckStatus.Pass, Invariant($"Only the guide pins cross the parting plane ({movingBeyond:0.##} mm, along the axis); the fixed half stays on its side ({fixedBeyond:0.##} mm)."))
+            : Check("halves-open", "The halves open along the axis", MoldCheckStatus.Fail, Invariant($"The moving half reaches {movingBeyond:0.##} mm and the fixed half {fixedBeyond:0.##} mm across the parting plane (allowed {protrusion + voxel:0.##} and {voxel:0.##} mm)."));
+
+        yield return CavityShape(input, halves, voxel);
+    }
+
+    private static MoldVerificationCheck Cut(MoldVerificationInput input, FunctionalMoldHalvesResult halves, double voxel)
+    {
+        const string Title = "Each system removed the steel it should";
+        var lines = new List<string>();
+        var failed = false;
+        var cavity = new InsideTester(input.CavityTriangles);
+
+        foreach (var half in new[] { halves.Moving, halves.Fixed })
+        {
+            var removedBefore = new List<Capsule>();
+
+            foreach (var system in FunctionalMoldHalvesRequest.SystemOrder)
+            {
+                var capsules = input.HalfFeatures
+                    .Where(f => f.System == system && (f.Half == half.Half || f.Half == 0))
+                    .Select(Capsule.From)
+                    .ToArray();
+
+                if (capsules.Length == 0)
+                {
+                    continue;
+                }
+
+                var adds = input.HalfFeatures.First(f => f.System == system).AddsSteel;
+                var (expected, error, area) = Expected(capsules, input, half.Half, cavity, removedBefore, adds);
+                var measured = half.Systems.FirstOrDefault(s => s.System == system);
+                var value = measured is null ? 0 : adds ? measured.AddedVolumeMm3 : measured.RemovedVolumeMm3;
+                var tolerance = (0.5 * voxel * area) + (3 * error);
+                var ok = Math.Abs(value - expected) <= tolerance;
+                failed |= !ok;
+                lines.Add(Invariant($"{half.Role} half {system}: {(adds ? "added" : "removed")} {value:0.#} mm3, expected {expected:0.#} +- {tolerance:0.#}{(ok ? string.Empty : " (FAIL)")}"));
+
+                if (!adds)
+                {
+                    removedBefore.AddRange(capsules);
+                }
+            }
+        }
+
+        return Check("halves-cut", Title, failed ? MoldCheckStatus.Fail : MoldCheckStatus.Pass, lines.Count == 0 ? "No feature to cut." : string.Join("; ", lines) + ".");
+    }
+
+    /// <summary>
+    /// Monte Carlo estimate of the steel a set of capsules removes from (or adds to) a half: the volume of their union
+    /// inside the half's box, outside the cavity and outside what earlier systems removed (for an added system, the
+    /// part of the union outside that steel). Each sample counts once: only in the first capsule that holds it.
+    /// Returns the estimate, its standard error and the surface area of the capsules (for the voxel tolerance).
+    /// </summary>
+    private static (double Volume, double Error, double Area) Expected(
+        IReadOnlyList<Capsule> capsules,
+        MoldVerificationInput input,
+        int half,
+        InsideTester cavity,
+        IReadOnlyList<Capsule> removedBefore,
+        bool adds)
+    {
+        var random = new Random(12345 + (half * 17) + capsules.Count);
+        var totalVolume = capsules.Sum(c => c.Volume);
+        var volume = 0.0;
+        var variance = 0.0;
+
+        for (var i = 0; i < capsules.Count; i++)
+        {
+            var c = capsules[i];
+            var n = Math.Max(200, (int)(SamplesPerSystem * c.Volume / totalVolume));
+            var hits = 0;
+
+            for (var s = 0; s < n; s++)
+            {
+                var p = c.Sample(random);
+
+                if (capsules.Take(i).Any(other => other.Contains(p)))
+                {
+                    continue;
+                }
+
+                var steel = InHalfBox(p, input.Block, input.Axis, input.MoldPartingOffsetMm, half) &&
+                    !cavity.Contains(p) &&
+                    !removedBefore.Any(r => r.Contains(p));
+
+                if (steel != adds)
+                {
+                    hits++;
+                }
+            }
+
+            var fraction = (double)hits / n;
+            volume += c.Volume * fraction;
+            variance += c.Volume * c.Volume * fraction * (1 - fraction) / n;
+        }
+
+        return (volume, Math.Sqrt(variance), capsules.Sum(c => c.Area));
+    }
+
+    private static MoldVerificationCheck CavityShape(MoldVerificationInput input, FunctionalMoldHalvesResult halves, double voxel)
+    {
+        const string Title = "The cavity in the halves follows the cavity mesh";
+
+        if (!File.Exists(halves.Moving.OutputPath) || !File.Exists(halves.Fixed.OutputPath))
+        {
+            return Check("cavity-shape", Title, MoldCheckStatus.NotRun, "The half STL files were not found.");
+        }
+
+        // 50 bytes per triangle in a binary STL; beyond ~20 million triangles the check would need gigabytes here.
+        var bytes = new FileInfo(halves.Moving.OutputPath).Length + new FileInfo(halves.Fixed.OutputPath).Length;
+
+        if (bytes > 1_000_000_000L)
+        {
+            return Check("cavity-shape", Title, MoldCheckStatus.NotRun, Invariant($"The half STL files are {bytes / 1_000_000L} MB, too large to check here."));
+        }
+
+        var triangles = BinaryStlTriangleReader.Read(halves.Moving.OutputPath)
+            .Concat(BinaryStlTriangleReader.Read(halves.Fixed.OutputPath))
+            .ToArray();
+
+        if (triangles.Length == 0)
+        {
+            return Check("cavity-shape", Title, MoldCheckStatus.Fail, "The half STL files hold no triangles.");
+        }
+
+        var bvh = new TriangleBvh(triangles);
+        var distances = SurfaceSamples(input.CavityTriangles, CavitySamples)
+            .Select(p => bvh.Nearest(p).Distance)
+            .OrderBy(d => d)
+            .ToArray();
+        var median = distances[distances.Length / 2];
+        var p90 = distances[(int)(0.9 * (distances.Length - 1))];
+        var ok = p90 <= voxel + 1e-9;
+        return Check(
+            "cavity-shape",
+            Title,
+            ok ? MoldCheckStatus.Pass : MoldCheckStatus.Fail,
+            Invariant($"Distance from {distances.Length} points of the cavity mesh to the halves: median {median:0.###} mm, 90th percentile {p90:0.###} mm, largest {distances[^1]:0.###} mm (features opening into the cavity); allowed one voxel, {voxel:0.###} mm. The shrinkage is checked at this resolution only."));
+    }
+
+    /// <summary>Points spread over the surface by area, deterministic.</summary>
+    private static IEnumerable<Vec3d> SurfaceSamples(IReadOnlyList<MeshTriangle> triangles, int count)
+    {
+        var areas = triangles.Select(t => Vec3d.Cross(Vec3d.From(t.B) - Vec3d.From(t.A), Vec3d.From(t.C) - Vec3d.From(t.A)).Length / 2).ToArray();
+        var total = areas.Sum();
+        var random = new Random(4242);
+
+        if (!(total > 0))
+        {
+            yield break;
+        }
+
+        for (var i = 0; i < triangles.Count; i++)
+        {
+            var n = (int)Math.Round(count * areas[i] / total);
+
+            for (var k = 0; k < n; k++)
+            {
+                var r1 = Math.Sqrt(random.NextDouble());
+                var r2 = random.NextDouble();
+                var a = Vec3d.From(triangles[i].A);
+                var b = Vec3d.From(triangles[i].B);
+                var c = Vec3d.From(triangles[i].C);
+                yield return (a * (1 - r1)) + (b * (r1 * (1 - r2))) + (c * (r1 * r2));
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+
+    private static bool InHalfBox(Vec3d p, MoldLayoutBlock b, PartingAxis axis, double offset, int half)
+    {
+        if (p.X < b.MinX || p.X > b.MaxX || p.Y < b.MinY || p.Y > b.MaxY || p.Z < b.MinZ || p.Z > b.MaxZ)
+        {
+            return false;
+        }
+
+        var h = axis == PartingAxis.X ? p.X : axis == PartingAxis.Y ? p.Y : p.Z;
+        return half > 0 ? h >= offset : h <= offset;
+    }
+
+    private static double PlaneArea(MoldLayoutBlock b, PartingAxis axis) => axis switch
+    {
+        PartingAxis.X => (b.MaxY - b.MinY) * (b.MaxZ - b.MinZ),
+        PartingAxis.Y => (b.MaxZ - b.MinZ) * (b.MaxX - b.MinX),
+        _ => (b.MaxX - b.MinX) * (b.MaxY - b.MinY)
+    };
+
+    private static double Height(MoldLayoutPoint p, PartingAxis axis) => axis == PartingAxis.X ? p.X : axis == PartingAxis.Y ? p.Y : p.Z;
+
+    private static MoldVerificationCheck Check(string id, string title, MoldCheckStatus status, string detail) => new(id, title, status, detail);
+
+    private static string Invariant(FormattableString value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>A cylinder of radius R around [A, B], with half-sphere ends when Round.</summary>
+    private sealed record Capsule(Vec3d A, Vec3d B, double R, bool Round)
+    {
+        public double Length => (B - A).Length;
+
+        public double Volume => (Math.PI * R * R * Length) + (Round ? 4.0 / 3.0 * Math.PI * R * R * R : 0);
+
+        public double Area => (2 * Math.PI * R * Length) + (Round ? 4 * Math.PI * R * R : 2 * Math.PI * R * R);
+
+        public static Capsule From(MoldHalfFeature f) =>
+            new(new Vec3d(f.StartXmm, f.StartYmm, f.StartZmm), new Vec3d(f.EndXmm, f.EndYmm, f.EndZmm), f.RadiusMm, f.RoundEnds);
+
+        public bool Contains(Vec3d p)
+        {
+            var axis = B - A;
+            var lengthSquared = Vec3d.Dot(axis, axis);
+            var t = lengthSquared > 0 ? Vec3d.Dot(p - A, axis) / lengthSquared : 0;
+
+            if (!Round && (t < 0 || t > 1))
+            {
+                return false;
+            }
+
+            var closest = A + (axis * Math.Clamp(t, 0, 1));
+            var d = p - closest;
+            return Vec3d.Dot(d, d) <= R * R;
+        }
+
+        /// <summary>A point uniform in the capsule (rejection from its bounding cylinder).</summary>
+        public Vec3d Sample(Random random)
+        {
+            var length = Length;
+            var direction = length > 0 ? (B - A) * (1 / length) : new Vec3d(0, 0, 1);
+            var helper = Math.Abs(direction.X) < 0.9 ? new Vec3d(1, 0, 0) : new Vec3d(0, 1, 0);
+            var e1 = Vec3d.Cross(direction, helper);
+            e1 *= 1 / e1.Length;
+            var e2 = Vec3d.Cross(direction, e1);
+            var extra = Round ? R : 0;
+
+            for (var attempt = 0; attempt < 1000; attempt++)
+            {
+                var t = (-extra) + (random.NextDouble() * (length + (2 * extra)));
+                var x = ((2 * random.NextDouble()) - 1) * R;
+                var y = ((2 * random.NextDouble()) - 1) * R;
+                var p = A + (direction * t) + (e1 * x) + (e2 * y);
+
+                if ((x * x) + (y * y) <= R * R && Contains(p))
+                {
+                    return p;
+                }
+            }
+
+            return A + (direction * (length / 2));
+        }
+    }
+
+    /// <summary>Inside test of a closed mesh: a ray leaves through the first face it meets (oblique direction).</summary>
+    private sealed class InsideTester
+    {
+        private static readonly Vec3d Direction = new(0.3093, 0.5162, 0.7987);
+        private readonly TriangleBvh? _bvh;
+        private readonly Vec3d[] _normals;
+
+        public InsideTester(IReadOnlyList<MeshTriangle> triangles)
+        {
+            _normals = new Vec3d[triangles.Count];
+
+            if (triangles.Count == 0)
+            {
+                return;
+            }
+
+            var volume = 0.0;
+
+            foreach (var t in triangles)
+            {
+                volume += Vec3d.Dot(Vec3d.From(t.A), Vec3d.Cross(Vec3d.From(t.B), Vec3d.From(t.C))) / 6.0;
+            }
+
+            var sign = volume < 0 ? -1.0 : 1.0;
+
+            for (var i = 0; i < triangles.Count; i++)
+            {
+                var t = triangles[i];
+                _normals[i] = Vec3d.Cross(Vec3d.From(t.B) - Vec3d.From(t.A), Vec3d.From(t.C) - Vec3d.From(t.A)) * sign;
+            }
+
+            _bvh = new TriangleBvh(triangles);
+        }
+
+        public bool Contains(Vec3d p)
+        {
+            if (_bvh is null)
+            {
+                return false;
+            }
+
+            var (_, triangle) = _bvh.RayHit(p, Direction, -1);
+            return triangle >= 0 && Vec3d.Dot(_normals[triangle], Direction) > 0;
+        }
+    }
+}

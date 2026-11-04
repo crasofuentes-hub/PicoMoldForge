@@ -30,7 +30,7 @@ public sealed class GeneratorSampleProjectTests
             Assert.Equal(0, exitCode);
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Generation pipeline: PASS", output.ToString());
-            Assert.Contains("Artifacts generated: 11", output.ToString());
+            Assert.Contains("Artifacts generated: 13", output.ToString());
 
             AssertArtifact(outputDirectory, "DiagnosticMesh.stl");
             AssertArtifact(outputDirectory, "Cavity.stl");

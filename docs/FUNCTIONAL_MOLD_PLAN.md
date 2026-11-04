@@ -13,8 +13,8 @@ the Functional Mold Alpha v2 priorities (docs/FUNCTIONAL_MOLD_ALPHA_V2.md).
 | F3 | Feed system tied to the part (priority 3) | box -> the gate reaches the cavity; sprue and runner keep the clearance from the part and stay inside the block | Linux | Done in code; the diagnostics are drawn on the Windows run |
 | F4 | Ejector pins on the moving half (priority 4) | box -> pins under the face of the moving half, inside its outline, at the minimum spacing | Linux | Done in code; as F3 |
 | F5 | Cooling around the real cavity | channel-to-cavity distance >= the configured minimum; no channel crosses a pin or the feed | Linux | Done in code; as F3 |
-| F6 | Subtract all features from the halves; centering features (priority 5) | removed volume = volume of each system (+- voxel); the halves locate and open without collision | Windows | Open |
-| F7 | Verification of the final mold | PASS where the part leaves two halves (box, spur gear); elsewhere the zone and the mechanism it needs | Linux + Windows | Open |
+| F6 | Subtract all features from the halves; centering features (priority 5) | removed volume = volume of each system (+- voxel); the halves locate and open without collision | Windows | Done in code; needs the Windows run |
+| F7 | Verification of the final mold | PASS where the part leaves two halves (box, spur gear); elsewhere the zone and the mechanism it needs | Linux + Windows | Done in code (Linux checks); the halves checks need the Windows run |
 | F8 | Package and link with Parts (priority 7), including the parked touching-faces fix | one launcher designs the part, generates its mold and leaves a ZIP of results | Windows | Open |
 
 F1 comes before F3 to F5 because the gate, the ejectors and the channels are placed relative to the plane.
@@ -150,3 +150,49 @@ per half spaced 15 mm, 10 mm clearance:
 Known limits: only an edge gate (round parts such as gears are normally gated at the centre); straight channels
 above and below the cavity only; vents and insert pockets still come from the configured part size;
 MoldSystemDiagnostic.stl draws the pins only when the split is across Z (their positions are in the report).
+
+## F6. Functional mold halves
+
+The generator writes two more files, MovingHalf.stl and FixedHalf.stl (13 artifacts instead of 11): each half of the
+block minus the cavity, minus the features placed in it, plus its guide pins (`PicoFunctionalMoldHalvesGenerator`,
+voxel booleans). BooleanCoreSide.stl and BooleanCavitySide.stl stay the plain split.
+
+- Cut in both halves: gate and runner (on the parting plane). Fixed half: sprue, guide bores. Moving half: ejector
+  pin holes. Each half: its cooling channels.
+- Holes run one voxel past the faces they open through, so the voxels leave no skin of steel over them.
+- Guide pins (layout, `MoldLayoutOptions`): four 8 mm pins near the block corners, the block's edge clearance from
+  its faces, standing on the moving half and entering 1.5 diameters into bores of the fixed half. The bores have a
+  radial play of max(0.5 mm, one voxel), so the halves do not fuse at the voxel size. A corner whose bore would
+  come within 3 mm of the cavity or another feature moves towards the centre of the block.
+- `FunctionalMoldAlphaReport.MoldHalves` gives, per half, the steel each system removed or added (measured on the
+  voxels), the steel both halves share and the extent of each half along the split axis.
+
+## F7. Verification of the final mold
+
+`MoldVerifier` (pure .NET) writes `FunctionalMoldAlphaReport.Verification` and the console line
+"Mold verification: PASS|FAIL ...". Its checks:
+
+| Check | PASS when |
+|-------|-----------|
+| cavity-in-block | the cavity lies strictly inside the block |
+| two-halves | no face is trapped or needs a side action (within max(1 mm2, 0.1 %)); otherwise FAIL with each zone (faces sharing vertices), its area, bounding box and mechanism: a slide with its travel, or an undercut that needs a lifter, a collapsible core or a design change |
+| feed | the feed works (F3) |
+| ejector-pins | at least one pin is placed |
+| cooling | both halves have channels (WARN otherwise) |
+| guide-pins | at least two guide pins (WARN otherwise) |
+| clearances | no pair of features is closer than its clearance |
+| halves-cut | each system removed (or added) the steel of a Monte Carlo estimate of the exact volume (40 000 samples), within half a voxel over its surface |
+| halves-overlap | the halves share at most 0.05 voxel over the parting plane |
+| halves-open | only the guide pins cross the parting plane, by their protrusion (+ one voxel) |
+| cavity-shape | points of the cavity mesh lie within one voxel of the halves (90th percentile) |
+
+The last four need the halves built by PicoGK: without them they are NOT RUN and do not change the verdict.
+
+The cavity-shape check is limited by the voxel size. At the 1 mm voxels of the samples it cannot see the 0.22 mm
+the shrinkage adds to the end-to-end box; a finer voxelResolutionMm shows it.
+
+Linux results without the halves:
+
+- End-to-end box, split X = 10: PASS. The - half has no cooling, so that check is a WARN.
+- T-shape split under its bar: FAIL, with two zones that need a slide (test
+  `TShape_SplitUnderTheBar_FailsWithTheZonesThatNeedASlide`).

@@ -9,6 +9,7 @@ using PicoMoldForge.Core.Engineering.GateSystem;
 using PicoMoldForge.Core.Engineering.MoldAccess;
 using PicoMoldForge.Core.Engineering.MoldLayout;
 using PicoMoldForge.Core.Engineering.Separation;
+using PicoMoldForge.Core.Engineering.Verification;
 using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Exports;
 using SeparationPartingAxis = PicoMoldForge.Core.Engineering.Separation.PartingAxis;
@@ -22,7 +23,8 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
         PartAnalysisReport partAnalysis,
         CoolingChannelPlan coolingPlan,
         DfAMReport dfamReport,
-        GeneratorMoldPlan? plan = null)
+        GeneratorMoldPlan? plan = null,
+        FunctionalMoldHalvesResult? halves = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(partAnalysis);
@@ -110,6 +112,23 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             warnings.Add($"DfAM warning: {warning}");
         }
 
+        var clearances = new ClearanceCollisionMatrix().Evaluate(GeneratorMoldLayout.ClearanceInput(plan.Layout)).Summary;
+        var block = input.BooleanMoldBlockBounds;
+        var verification = MoldVerifier.Verify(new MoldVerificationInput(
+            triangles,
+            moldAccess.Access,
+            plan.BlockFit.IsPartInsideBlock,
+            plan.Layout,
+            plan.Layout is null ? null : clearances,
+            plan.CavityTriangles,
+            new MoldLayoutBlock((double)block.MinXmm, (double)block.MinYmm, (double)block.MinZmm, (double)block.MaxXmm, (double)block.MaxYmm, (double)block.MaxZmm),
+            splitAxis,
+            (double)plan.MoldPartingOffsetMm,
+            GeneratorMoldLayout.HalfFeatures(plan.Layout, (double)input.Config.VoxelResolutionMm),
+            halves,
+            (double)input.Config.VoxelResolutionMm));
+        warnings.Add("Mold verification: " + verification.Summary);
+
         return new FunctionalMoldAlphaReport(
             Separation: separationResult.Summary,
             Shutoff: shutoffSummary,
@@ -120,11 +139,13 @@ public static class GeneratorFunctionalMoldAlphaReportFactory
             CoolingChannels: new CoolingChannelSubtractor().PlanSubtraction(GeneratorMoldLayout.CoolingInput(input, plan.Layout)).Summary,
             GateRunnerSprue: new GateRunnerSprueGenerator().Plan(GeneratorMoldLayout.FeedInput(input, plan.Layout)).Summary,
             EjectorCandidates: new EjectorCandidateGenerator().Plan(GeneratorMoldLayout.EjectorInput(input, plan.Layout)).Summary,
-            ClearanceMatrix: new ClearanceCollisionMatrix().Evaluate(GeneratorMoldLayout.ClearanceInput(plan.Layout)).Summary,
+            ClearanceMatrix: clearances,
             PartingPlane: partingPlaneScoring.BestScore,
             MoldBlockFit: plan.BlockFit,
             Shrinkage: plan.ShrinkageSummary,
-            MoldLayout: plan.Layout is null ? null : MoldLayoutSummary.From(plan.Layout));
+            MoldLayout: plan.Layout is null ? null : MoldLayoutSummary.From(plan.Layout),
+            MoldHalves: halves,
+            Verification: verification);
     }
 
     /// <summary>Area of the part bounds seen along the split axis.</summary>
