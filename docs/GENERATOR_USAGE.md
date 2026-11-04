@@ -264,6 +264,31 @@ The current split flow is:
 
 Manual parting does not yet implement shutoff surfaces, side actions, slides, lifters, gate design, runner design, sprue design, or manufacturing certification.
 
+## mold layout
+
+The generator places the feed system, the ejector pins and the cooling channels around the cavity (the part scaled
+for shrinkage) on the split in use, with no PicoGK runtime (`MoldLayoutPlanner`). The report evaluates what was
+placed: `GateRunnerSprue`, `EjectorCandidates`, `CoolingChannels` and `ClearanceMatrix` come from measured positions
+and clearances, and `MoldLayout` lists every feature (centreline and diameter). The warnings explain each choice.
+
+- Moving half: the half the part shrinks onto (core surfaces); with no clear difference, the half holding more of the
+  cavity surface; otherwise the - half. A warning names its file: the - side of the split is BooleanCoreSide.stl, the
+  + side BooleanCavitySide.stl.
+- Feed: an edge gate on the parting plane entering the thickest section it finds on the outline (0.6 x that section,
+  at least 0.5 mm, land 1 mm), a runner on the plane (thickest wall + 1.5 mm, at least 3 mm) and a sprue through the
+  fixed half to its outer face (runner + 1 mm). Runner and sprue keep 0.5 mm of steel from the cavity, and
+  cooling.minimumClearanceMm from the block faces.
+- Ejector pins: moldSystem.ejectorPinCount pins of moldSystem.ejectorPinDiameterMm on the flat faces of the moving half
+  that face its back plate, 0.5 mm inside the face outline, at least 2 x their diameter apart, with nothing of the part
+  in their way.
+- Cooling: see "cooling configuration".
+- Cooling channels, pins and feed keep 3 mm of steel between them.
+
+These are rules of thumb (defaults of `MoldLayoutOptions`), not values from a standard. When a system cannot be
+placed, the warnings say where and why (for example "no room in the block for the sprue clear of the cavity"), the
+summaries count it, and the diagnostic STL is written empty. The layout is skipped when the cavity does not fit in
+the block.
+
 ## cooling configuration
 
 The project JSON must include a cooling section.
@@ -292,14 +317,25 @@ Validation rules:
 
 Current cooling pipeline:
 
-    cooling config
-    -> CoolingPlanner
+    cooling config + cavity + split
+    -> MoldLayoutPlanner (channels placed around the cavity, see "mold layout")
     -> PicoCoolingDiagnosticExporter
     -> CoolingDiagnostic.stl
 
+How the fields are used by the layout:
+
+- channelDiameterMm: diameter of each straight drilled channel;
+- channelCount: channels in each half;
+- channelSpacingMm: spacing between channels, centred on the cavity;
+- minimumClearanceMm: steel between a channel wall and the cavity, and between a channel and the block faces it does
+  not pass through;
+- partSizeXmm, partSizeYmm, partSizeZmm: still validated as before; the layout uses the measured cavity.
+
+When no channel fits, CoolingDiagnostic.stl is written empty and the warnings say why.
+
 Current limitation:
 
-CoolingDiagnostic.stl is a preliminary diagnostic artifact. It visualizes cooling channel geometry but does not yet subtract channels from BooleanCoreSide.stl or BooleanCavitySide.stl.
+CoolingDiagnostic.stl is a diagnostic artifact. It draws the channels placed around the cavity but they are not yet subtracted from BooleanCoreSide.stl or BooleanCavitySide.stl.
 
 Recommended next cooling development:
 
@@ -390,13 +426,14 @@ Validation rules:
 Current mold-system pipeline:
 
     moldSystem config
-    -> PreliminaryMoldSystemPlanner
+    -> PreliminaryMoldSystemPlanner (vents, insert pockets)
+    -> ejector pins placed on the moving half by MoldLayoutPlanner (ejectorPinDiameterMm, ejectorPinCount)
     -> PicoMoldSystemDiagnosticExporter
     -> MoldSystemDiagnostic.stl
 
 Current limitation:
 
-MoldSystemDiagnostic.stl is a preliminary diagnostic artifact. It visualizes mold-system reference geometry but does not yet subtract ejectors, vents, inserts, runners, gates, or sprues from BooleanCoreSide.stl or BooleanCavitySide.stl.
+MoldSystemDiagnostic.stl is a diagnostic artifact. Vents and insert pockets still come from the configured part size; the ejector pins are the placed ones, drawn only when the split is across Z (the diagnostic draws vertical pins). Nothing is subtracted from BooleanCoreSide.stl or BooleanCavitySide.stl yet.
 
 Recommended next mold-system development:
 

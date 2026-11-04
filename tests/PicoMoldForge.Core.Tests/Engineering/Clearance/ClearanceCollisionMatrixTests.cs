@@ -23,6 +23,25 @@ public sealed class ClearanceCollisionMatrixTests
     }
 
     [Fact]
+    public void Evaluate_PartsOfOneConnectedFeature_AreNotComparedWithEachOther()
+    {
+        // Runner and gate of one feed path touch by design; a pin near them is still compared with both.
+        var runner = Feature("runner", ClearanceFeatureKind.GateSystem, 0m, 0m, 0m, 10m, 0m, 0m, radius: 3m) with { GroupId = "feed" };
+        var gate = Feature("gate", ClearanceFeatureKind.GateSystem, 10m, 0m, 0m, 12m, 0m, 0m, radius: 1m) with { GroupId = "feed" };
+        var pin = Feature("pin", ClearanceFeatureKind.EjectorPin, 5m, 20m, 0m, 5m, 20m, 10m, radius: 2m);
+
+        var grouped = new ClearanceCollisionMatrix().Evaluate(CreateInput(new[] { runner, gate, pin }));
+        var ungrouped = new ClearanceCollisionMatrix().Evaluate(CreateInput(new[] { runner with { GroupId = null }, gate with { GroupId = null }, pin }));
+
+        Assert.Equal(3, grouped.Summary.FeatureCount);
+        Assert.Equal(2, grouped.Summary.PairCount);
+        Assert.Equal(0, grouped.Summary.CollisionRiskPairCount);
+        Assert.DoesNotContain(grouped.Pairs, p => p.FeatureAId == "runner" && p.FeatureBId == "gate");
+        Assert.Equal(3, ungrouped.Summary.PairCount);
+        Assert.Equal(1, ungrouped.Summary.CollisionRiskPairCount);
+    }
+
+    [Fact]
     public void Evaluate_WithSingleFeature_ReturnsNeedsEngineerReview()
     {
         var matrix = new ClearanceCollisionMatrix();

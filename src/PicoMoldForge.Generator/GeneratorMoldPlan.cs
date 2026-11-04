@@ -1,5 +1,6 @@
 using System.Globalization;
 using PicoMoldForge.Core.Engineering.MoldAccess;
+using PicoMoldForge.Core.Engineering.MoldLayout;
 using PicoMoldForge.Core.Engineering.Separation;
 using PicoMoldForge.Core.Engineering.Shrinkage;
 using PicoMoldForge.Core.Engineering.WallThickness;
@@ -18,6 +19,9 @@ namespace PicoMoldForge.Generator;
 /// The mold is built around the cavity: the part scaled by 1 + shrinkage about its bounding-box centre
 /// (<paramref name="CavityTriangles"/>, <paramref name="CavityBounds"/>); the split moves with it
 /// (<paramref name="MoldPartingOffsetMm"/>), and the block fit is checked on the cavity.
+/// <paramref name="WallThickness"/> is measured on the part as designed; <paramref name="Layout"/> places the feed,
+/// the ejector pins and the cooling around the cavity (null when the cavity does not fit in the block), explained by
+/// <paramref name="LayoutNotes"/>.
 /// </summary>
 public sealed record GeneratorMoldPlan(
     IReadOnlyList<MeshTriangle> Triangles,
@@ -33,7 +37,10 @@ public sealed record GeneratorMoldPlan(
     MeshVertex ScaleCenter,
     IReadOnlyList<MeshTriangle> CavityTriangles,
     MoldSeparationBounds CavityBounds,
-    decimal MoldPartingOffsetMm)
+    decimal MoldPartingOffsetMm,
+    MeshWallThicknessAnalysisResult WallThickness,
+    MoldLayoutPlan? Layout,
+    IReadOnlyList<string> LayoutNotes)
 {
     /// <summary>File name of the cavity STL the runner writes for the boolean mold halves.</summary>
     public const string CavityFileName = "ShrinkageScaledPart.stl";
@@ -129,6 +136,19 @@ public static class GeneratorMoldPlanner
             notes.Add(Invariant($"Mold split at {axis} = {moldOffset:0.####} mm: the part split at {offset:0.####} mm, moved with the scaled cavity."));
         }
 
+        var wallThickness = MeshWallThicknessAnalysis.Analyze(
+            triangles,
+            Math.Min(input.DfAM.MinimumWallThicknessMm, input.DfAM.RecommendedMinimumWallThicknessMm),
+            abruptChangeRatio: 0.50m);
+        var layout = blockFit.IsPartInsideBlock
+            ? MoldLayoutPlanner.Plan(GeneratorMoldLayout.CreateRequest(
+                input,
+                cavityTriangles,
+                ToSearchAxis(axis),
+                moldOffset,
+                (double)wallThickness.Analysis.Summary.MaximumObservedThicknessMm * (double)scale))
+            : null;
+
         return new GeneratorMoldPlan(
             triangles,
             partBounds,
@@ -143,7 +163,10 @@ public static class GeneratorMoldPlanner
             center,
             cavityTriangles,
             cavityBounds,
-            moldOffset);
+            moldOffset,
+            wallThickness,
+            layout,
+            GeneratorMoldLayout.Notes(layout).ToArray());
     }
 
     /// <summary>Every vertex moved to centre + (v - centre) * factor.</summary>

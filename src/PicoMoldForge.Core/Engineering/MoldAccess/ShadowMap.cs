@@ -76,6 +76,25 @@ internal sealed class ShadowMap
 
     public double Cell => _cell;
 
+    /// <summary>Number of cells along the first side direction.</summary>
+    public int Count1 => _n1;
+
+    /// <summary>Number of cells along the second side direction.</summary>
+    public int Count2 => _n2;
+
+    /// <summary>Centre of cell (i, j): its coordinates along the first and the second side direction.</summary>
+    public (double X, double Y) CellCenter(int i, int j) => (_min1 + ((i + 0.5) * _cell), _min2 + ((j + 0.5) * _cell));
+
+    /// <summary>Cell holding the point (x, y); it may lie outside the grid.</summary>
+    public (int I, int J) CellOf(double x, double y) => ((int)Math.Floor((x - _min1) / _cell), (int)Math.Floor((y - _min2) / _cell));
+
+    /// <summary>
+    /// Upper bound of half * height of the part over cell (i, j): the surface of that column nearest the outer face
+    /// of the half (+1: the highest point along the axis; -1: the lowest one, negated). -infinity when the column
+    /// holds nothing of the part.
+    /// </summary>
+    public double Reach(int i, int j, int half) => (half > 0 ? _positive : _negative)[(j * _n1) + i];
+
     /// <summary>
     /// Smallest s in [0, limit) at which the column through (x, y) + s (ux, uy) holds nothing of the part beyond
     /// <paramref name="height"/> along the opening direction of <paramref name="half"/> (+1 or -1); +infinity when

@@ -37,6 +37,11 @@ public sealed class ClearanceCollisionMatrix
         {
             for (var b = a + 1; b < input.Features.Count; b++)
             {
+                if (IsSameGroup(input.Features[a], input.Features[b]))
+                {
+                    continue;
+                }
+
                 yield return EvaluatePair(
                     input.Features[a],
                     input.Features[b],
@@ -44,6 +49,10 @@ public sealed class ClearanceCollisionMatrix
             }
         }
     }
+
+    /// <summary>Parts of one connected feature touch by design.</summary>
+    private static bool IsSameGroup(ClearanceFeature a, ClearanceFeature b) =>
+        !string.IsNullOrWhiteSpace(a.GroupId) && string.Equals(a.GroupId, b.GroupId, StringComparison.Ordinal);
 
     private static ClearancePairResult EvaluatePair(
         ClearanceFeature a,

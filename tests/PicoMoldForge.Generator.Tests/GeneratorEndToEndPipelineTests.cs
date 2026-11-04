@@ -130,6 +130,14 @@ public sealed class GeneratorEndToEndPipelineTests
             Assert.Equal(0, gateRunnerSprue.GetProperty("BlockedSegmentCount").GetInt32());
             Assert.True(gateRunnerSprue.GetProperty("TotalFlowLengthMm").GetDecimal() > 0m);
             Assert.True(gateRunnerSprue.GetProperty("TotalEstimatedVolumeMm3").GetDecimal() > 0m);
+
+            // Feed, pins and cooling placed around the cavity (split X = 10, the - half moves).
+            var moldLayout = alpha.GetProperty("MoldLayout");
+            Assert.Equal("-X", moldLayout.GetProperty("MovingHalf").GetString());
+            Assert.True(moldLayout.GetProperty("FeedIsFeasible").GetBoolean());
+            Assert.Equal(1, moldLayout.GetProperty("EjectorPinCount").GetInt32());
+            Assert.Equal(2, moldLayout.GetProperty("CoolingChannelCount").GetInt32());
+            Assert.Equal(0, alpha.GetProperty("ClearanceMatrix").GetProperty("CollisionRiskPairCount").GetInt32());
         }
         finally
         {
