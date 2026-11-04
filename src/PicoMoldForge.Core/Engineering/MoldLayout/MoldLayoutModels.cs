@@ -53,7 +53,8 @@ public sealed record MoldLayoutOptions(
 /// configured features. <paramref name="CoolingChannelsPerHalf"/> channels are placed in each half;
 /// <paramref name="CoolingCavityClearanceMm"/> is the steel between a channel wall and the cavity;
 /// <paramref name="MoldEdgeClearanceMm"/> the steel a channel and the feed keep from the faces of the block they do
-/// not pass through.
+/// not pass through. <paramref name="VoxelGridMm"/>, when positive, is the voxel size the halves are built at: the
+/// guide pins are then kept a quarter of a voxel off that grid (0: no grid, the corners as they fall).
 /// </summary>
 public sealed record MoldLayoutRequest(
     IReadOnlyList<MeshTriangle> CavityTriangles,
@@ -68,7 +69,8 @@ public sealed record MoldLayoutRequest(
     int CoolingChannelsPerHalf,
     double CoolingCavityClearanceMm,
     double MoldEdgeClearanceMm,
-    double GuideBoreClearanceMm = 0.5);
+    double GuideBoreClearanceMm = 0.5,
+    double VoxelGridMm = 0);
 
 /// <summary>
 /// The two halves. <paramref name="MovingHalf"/> is +1 for the half on the positive side of the plane (it opens along

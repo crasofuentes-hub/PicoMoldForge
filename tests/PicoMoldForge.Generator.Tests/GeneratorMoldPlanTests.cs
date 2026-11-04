@@ -197,11 +197,12 @@ public sealed class GeneratorMoldPlanTests
         var report = project.CreateReport();
         var verification = report.Verification!;
 
-        // The box leaves two halves; the - half has no room for cooling (WARN); the checks on the halves need PicoGK.
+        // The box leaves two halves; the - half has no room for cooling (WARN); the five checks on the halves need
+        // PicoGK.
         Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Pass, verification.Status);
         Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Pass, verification.Checks.Single(c => c.Id == "two-halves").Status);
         Assert.Equal(Core.Engineering.Verification.MoldCheckStatus.Warn, verification.Checks.Single(c => c.Id == "cooling").Status);
-        Assert.Equal(4, verification.Checks.Count(c => c.Status == Core.Engineering.Verification.MoldCheckStatus.NotRun));
+        Assert.Equal(5, verification.Checks.Count(c => c.Status == Core.Engineering.Verification.MoldCheckStatus.NotRun));
         Assert.Equal(4, report.MoldLayout!.GuidePinCount);
         Assert.Contains(report.Warnings, w => w.StartsWith("Mold verification: PASS", StringComparison.Ordinal));
         Assert.Null(report.MoldHalves);

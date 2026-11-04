@@ -181,12 +181,14 @@ voxel booleans). BooleanCoreSide.stl and BooleanCavitySide.stl stay the plain sp
 | cooling | both halves have channels (WARN otherwise) |
 | guide-pins | at least two guide pins (WARN otherwise) |
 | clearances | no pair of features is closer than its clearance |
-| halves-cut | each system removed (or added) the steel of a Monte Carlo estimate of the exact volume (40 000 samples), within half a voxel over its surface |
+| halves-cut | each system removed (or added) the steel of a Monte Carlo estimate of the exact volume (40 000 samples), within half a voxel over its surface, and points on the axes of its features are empty (holes) or in steel (pins) in the half's STL; WARN when neither can tell the feature from no feature at the voxel size |
 | halves-overlap | the halves share at most 0.05 voxel over the parting plane |
 | halves-open | only the guide pins cross the parting plane, by their protrusion (+ one voxel) |
 | cavity-shape | points of the cavity mesh lie within one voxel of the halves (90th percentile) |
+| halves-mesh | each half's STL is a closed surface (every edge in two triangles) in one piece; edges in more than two triangles are a WARN |
 
-The last four need the halves built by PicoGK: without them they are NOT RUN and do not change the verdict.
+The last five need the halves built by PicoGK: without them they are NOT RUN and do not change the verdict. A WARN does
+not change the verdict either; the summary names the checks that passed with one.
 
 The cavity-shape check is limited by the voxel size. At the 1 mm voxels of the samples it cannot see the 0.22 mm
 the shrinkage adds to the end-to-end box; a finer voxelResolutionMm shows it.
@@ -255,6 +257,44 @@ types of `FunctionalMoldHalves.cs` were not found).
   plain rebuild fails again. `--no-incremental` builds.
 - The launcher now always rebuilds from scratch. Its summary has a "Reloj" row that warns when the commit is dated
   after the clock.
+
+Second Windows run (commit b059c62, Windows 10.0.26200, .NET 9.0.22, PicoGK 26.1.1): every step ran, in under 7
+minutes.
+
+- All 559 tests pass, the 34 PicoGK-native ones included: Core 326, Generator 64, PicoGK 29, Parts.Core 111,
+  Parts.Cli 21, Parts.PicoGK 4, Cli 4.
+- The six molds were generated in 11 to 32 s each, with 13 files each.
+- The sample box and the spur gear PASS every check, the four halves checks included. The flange, piston, monoblock
+  and helical gear FAIL only on two halves, with the zones of the Linux preview.
+- On the halves of the box and the gear, sections through the cavity, the feed, the ejector pins, the cooling and
+  the guide pins show each feature where the layout puts it.
+
+Three findings from that run:
+
+1. The volume test of halves-cut could not tell some features from none.
+   - Its tolerance is half a voxel over the whole capsule surface. For the gate and runner of the box (moving half),
+     that came to 144.1 mm3 against an expected 141.3 mm3, so a missing cut would have passed.
+   - The 41 measured volumes were within -10.8 % to +6.3 % of the expected ones. The tolerances were 14 % to 102 %.
+   - The check now also tests points on the axes of the features against each half's STL: four per feature, half a
+     radius into the half for the feed on the parting plane. Replayed on the Windows halves of the box and the gear,
+     every point agrees: 4 to 16 per system, holes empty and pins in steel.
+   - A system that neither the volume nor the axis can confirm is a WARN.
+2. The halves are closed and each is one piece, but some edges lie in four, six or ten triangles.
+   - Box: 52 such edges in the moving half and 388 in the fixed half. Gear: 48 and 160.
+   - Every one of them is on a guide pin or a guide bore, at the grid nodes where the circle of the pin (radius 4 mm)
+     or bore (radius 5 mm) passes through. These are the only features with whole-millimetre centres and radii.
+   - Hypothesis: the voxel field is exactly zero at those nodes, and the mesher puts several vertices on them.
+   - Change: the guide pins are now planned a quarter voxel inside the grid. With radii a multiple of a quarter
+     voxel, no node of the grid then lies on their circles.
+   - Test: the next Windows run. The new halves-mesh check reports these edges (WARN), so the run says whether they
+     are gone.
+3. Parts does not mesh the gears and the flange the same way on Windows and on Linux.
+   - Triangles: spur gear 38 158 against 38 882; helical gear 19 656 against 19 382; flange 35 492 against 35 778.
+     The piston and the monoblock are identical.
+   - Each mesh passes every Parts check, and the volumes agree within 0.004 %.
+   - The verdicts did not change, but the numbers did. The slide the flange's cross hole needs reads at least
+     7.02 mm on Windows against 9.96 mm on Linux. That figure is a lower bound found by searching directions, and it
+     depends on the mesh.
 
 The touching-faces fix of Parts (field zeros classified by a nudge, so touching features join) is merged with an
 edge-midpoint guard in the simplifier. Without the guard, the flange left rim chords 0.2675 mm off the surface;
