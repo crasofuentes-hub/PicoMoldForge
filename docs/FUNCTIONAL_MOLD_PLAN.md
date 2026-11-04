@@ -175,7 +175,7 @@ voxel booleans). BooleanCoreSide.stl and BooleanCavitySide.stl stay the plain sp
 | Check | PASS when |
 |-------|-----------|
 | cavity-in-block | the cavity lies strictly inside the block |
-| two-halves | no face is trapped or needs a side action (within max(1 mm2, 0.1 %)); otherwise FAIL with each zone (faces sharing vertices), its area, bounding box and mechanism: a slide with its travel, or an undercut that needs a lifter, a collapsible core or a design change |
+| two-halves | no face is trapped or needs a side action (within max(1 mm2, 0.1 %)); otherwise FAIL with each zone (faces sharing vertices), its area, bounding box and mechanism: a slide with its travel, or an undercut that needs a lifter, a collapsible core or a design change. Zones freed by less than the resolution of the analysis are reported, not counted (WARN when nothing else is held) |
 | feed | the feed works (F3) |
 | ejector-pins | at least one pin is placed |
 | cooling | both halves have channels (WARN otherwise) |
@@ -211,6 +211,19 @@ Now:
 - Zones under 1 mm2 are counted as slivers and not listed (test `Zone_IsAnUndercutOnlyWhenARealShareOfItIsTrapped`).
 - Whether one slide releases a zone or it takes several (a groove all around the part) is not decided. A heuristic
   on the normals of the zone was refuted by the same bores: their end faces looked like a ring.
+
+Second rule refuted: "every zone of 1 mm2 or more that a slide releases needs that slide". The monoblock listed a
+4.6 mm2 strip of crankcase wall (X -6..-5.4, Y = -36, Z 12.9..28.7) as a slide with 0.05 mm of travel. Its faces are
+vertical. They are held by a mesh vertex 0.125 mm proud of the wall, 18 mm below, at the corner of the wall, the
+bulkhead and the bottom face. The template makes that corner sharp, and the mesh resolution is 0.35 mm. The steel
+point of a face sits one resolution r (0.1 mm) off it. A face freed by moving it less than r is therefore held by a
+step under 2r, which this analysis cannot tell from mesh noise. Now:
+
+- A zone released by slides whose faces all need less than r of travel is reported in the two-halves detail and
+  not counted. If it is the only thing held, the check is a WARN (test
+  `Zone_FreedByLessThanTheResolution_IsReportedButNotCounted`).
+- Cost: a real step under 2r (0.2 mm) is reported, not failed.
+- On the six samples only that monoblock zone changed. The monoblock keeps three zones and still fails on its bores.
 
 ## F8. Parts to mold
 

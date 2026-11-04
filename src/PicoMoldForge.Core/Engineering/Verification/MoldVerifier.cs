@@ -120,19 +120,48 @@ public static class MoldVerifier
             return Check("two-halves", Title, MoldCheckStatus.Pass, Invariant($"Every face releases along the opening direction of its half ({blockedArea:0.##} mm2 held, within {tolerance:0.##} mm2 of mesh noise)."));
         }
 
-        // Zones under 1 mm2 are slivers of the mesh: counted, not listed.
-        var all = Zones(input.PartTriangles, blocked).ToArray();
-        var small = all.Where(z => z.AreaMm2 < 1.0).ToArray();
-        zones.AddRange(all.Where(z => z.AreaMm2 >= 1.0));
-        var text = Invariant($"{blockedArea:0.#} mm2 ({100 * blockedArea / total:0.#} % of the surface) cannot leave the two halves, in {zones.Count} zone(s)") +
+        // Zones under 1 mm2 are slivers of the mesh: counted, not listed. A zone whose every face is freed by a
+        // sideways move shorter than the resolution of the analysis is not resolved: the steel point sits one
+        // resolution off the face, so the zone is held by a step under twice the resolution (on the monoblock, an
+        // overshoot of 0.125 mm of the mesh at a sharp corner held a 4.6 mm2 strip of wall 18 mm above it). It is
+        // reported and not counted.
+        var resolution = input.Access.ResolutionMm;
+        var all = Zones(input.PartTriangles, blocked, resolution).ToArray();
+        var small = all.Where(z => z.Zone.AreaMm2 < 1.0).Select(z => z.Zone).ToArray();
+        var unresolved = all.Where(z => z.Zone.AreaMm2 >= 1.0 && z.BelowResolution).Select(z => z.Zone).OrderByDescending(z => z.AreaMm2).ToArray();
+        zones.AddRange(all.Where(z => z.Zone.AreaMm2 >= 1.0 && !z.BelowResolution).Select(z => z.Zone));
+        var unresolvedArea = unresolved.Sum(z => z.AreaMm2);
+        var unresolvedText = unresolved.Length == 0
+            ? string.Empty
+            : Invariant($"{unresolved.Length} zone(s) ({unresolvedArea:0.#} mm2, the largest {unresolved[0].AreaMm2:0.#} mm2 at {Box(unresolved[0])}) are freed by a sideways move under the {resolution:0.###} mm resolution of the analysis: held by a step under {2 * resolution:0.###} mm (mesh noise at a sharp edge, or a real step that small), they are not counted");
+        var heldArea = blockedArea - unresolvedArea;
+
+        if (heldArea <= tolerance)
+        {
+            return Check("two-halves", Title, MoldCheckStatus.Warn, Invariant($"Every face releases along the opening direction of its half, except: {unresolvedText}; check them on the real part."));
+        }
+
+        var text = Invariant($"{heldArea:0.#} mm2 ({100 * heldArea / total:0.#} % of the surface) cannot leave the two halves, in {zones.Count} zone(s)") +
             (small.Length > 0 ? Invariant($" and {small.Length} sliver(s) under 1 mm2 ({small.Sum(z => z.AreaMm2):0.#} mm2)") : string.Empty);
         var largest = zones.OrderByDescending(z => z.AreaMm2).Take(3)
-            .Select(z => Invariant($"{z.AreaMm2:0.#} mm2 at X {z.Min.X:0.#}..{z.Max.X:0.#}, Y {z.Min.Y:0.#}..{z.Max.Y:0.#}, Z {z.Min.Z:0.#}..{z.Max.Z:0.#}: {z.Mechanism}"));
-        return Check("two-halves", Title, MoldCheckStatus.Fail, text + ": " + string.Join("; ", largest) + ".");
+            .Select(z => Invariant($"{z.AreaMm2:0.#} mm2 at {Box(z)}: {z.Mechanism}"))
+            .ToArray();
+        return Check(
+            "two-halves",
+            Title,
+            MoldCheckStatus.Fail,
+            text + (largest.Length > 0 ? ": " + string.Join("; ", largest) : string.Empty) + "." +
+            (unresolvedText.Length > 0 ? " Besides, " + unresolvedText + "." : string.Empty));
     }
 
-    /// <summary>Faces that touch (share a vertex) form one zone.</summary>
-    private static IEnumerable<MoldTrappedZone> Zones(IReadOnlyList<MeshTriangle> triangles, IReadOnlyList<MoldAccessFace> faces)
+    private static string Box(MoldTrappedZone z) =>
+        Invariant($"X {z.Min.X:0.#}..{z.Max.X:0.#}, Y {z.Min.Y:0.#}..{z.Max.Y:0.#}, Z {z.Min.Z:0.#}..{z.Max.Z:0.#}");
+
+    /// <summary>
+    /// Faces that touch (share a vertex) form one zone. <c>BelowResolution</c>: the zone is released by slides only
+    /// and none of its faces needs a travel of <paramref name="resolutionMm"/> or more.
+    /// </summary>
+    private static IEnumerable<(MoldTrappedZone Zone, bool BelowResolution)> Zones(IReadOnlyList<MeshTriangle> triangles, IReadOnlyList<MoldAccessFace> faces, double resolutionMm)
     {
         var parent = Enumerable.Range(0, faces.Count).ToArray();
 
@@ -187,13 +216,14 @@ public static class MoldVerifier
                 : Invariant($"a side action (one or more slides) with at least {travel:0.##} mm of travel");
             var half = members.Sum(f => f.Half * f.AreaMm2) >= 0 ? 1 : -1;
 
-            yield return new MoldTrappedZone(
+            var zone = new MoldTrappedZone(
                 mechanism,
                 area,
                 new MoldLayoutPoint(vertices.Min(v => v.X), vertices.Min(v => v.Y), vertices.Min(v => v.Z)),
                 new MoldLayoutPoint(vertices.Max(v => v.X), vertices.Max(v => v.Y), vertices.Max(v => v.Z)),
                 trapped ? 0 : travel,
                 half);
+            yield return (zone, !trapped && members.Any(f => f.Access == MoldFaceAccess.SideAction) && travel < resolutionMm);
         }
     }
 
