@@ -296,6 +296,29 @@ Three findings from that run:
      7.02 mm on Windows against 9.96 mm on Linux. That figure is a lower bound found by searching directions, and it
      depends on the mesh.
 
+Third Windows run (commit 1636428): every step ran.
+
+- All 579 tests pass.
+- The six molds keep their verdicts: box and spur gear PASS (the box with its cooling warning), the other four FAIL
+  only on two halves.
+- The guide-pin hypothesis held: no edge lies in more than two triangles in any of the twelve halves. Before the
+  quarter-voxel offset there were 52/388 in the box and 48/160 in the gear. A separate Python count of the box and
+  gear halves agrees.
+- Every point on the axes of every system was as planned in all six molds: holes empty, pins in steel.
+- New finding: the monoblock's moving half came out in 4 pieces (0 open edges).
+  - Cause, measured on the same cavity mesh here: the crankcase ceiling of the cavity wanders from Z 49.91 to
+    50.07 mm (mesh noise) about the parting plane at 49.978 mm.
+  - Where the ceiling rises above the voxel layer at Z = 50, that node is steel of the moving half, cut off from the
+    rest.
+  - A voxel model of that half finds such single nodes, under ceiling heights of 50.003, 50.008 and 50.013 mm. That
+    makes three islands; a fourth candidate at 50.0004 mm is marginal. This matches the three extra pieces of the
+    Windows run.
+  - Change: the halves are written without islands smaller than one voxel. The result counts them
+    (`IslandsRemoved`, `IslandVolumeMm3`), a warning names them, and halves-mesh reports them. Any larger extra piece
+    stays, and halves-mesh now names each one with its volume and box (a void if it is wound against the solid).
+  - Checked here on real halves from the Windows run, with three 0.05 mm islands added: the islands go and every
+    triangle of the half stays.
+
 The touching-faces fix of Parts (field zeros classified by a nudge, so touching features join) is merged with an
 edge-midpoint guard in the simplifier. Without the guard, the flange left rim chords 0.2675 mm off the surface;
 with it, the flange stays within 0.1002 mm and all five samples pass every check.

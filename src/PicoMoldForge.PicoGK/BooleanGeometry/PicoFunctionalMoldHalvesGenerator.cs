@@ -1,5 +1,7 @@
 using System.Numerics;
 using PicoMoldForge.Core.BooleanGeometry;
+using PicoMoldForge.Core.Engineering.Verification;
+using PicoMoldForge.Core.Engineering.WallThickness;
 using PicoMoldForge.Core.Parting;
 using PicoMoldForge.PicoGK.Runtime;
 using PicoLattice = global::PicoGK.Lattice;
@@ -58,11 +60,18 @@ public sealed class PicoFunctionalMoldHalvesGenerator
                     using var overlap = movingCore.voxBoolIntersect(in fixedCore);
                     overlap.CalculateProperties(out var overlapVolume, out _);
 
-                    var warnings = new[]
+                    var warnings = new List<string>
                     {
                         "MovingHalf.stl and FixedHalf.stl are the mold halves with the feed, the ejector pin holes, the cooling channels and the guide bores cut, and the guide pins added, by voxel booleans.",
                         "Features are cut at the voxel size of the run; holes and pins finer than a few voxels are approximate."
                     };
+
+                    foreach (var half in new[] { moving, fixedHalf }.Where(h => h.IslandsRemoved > 0))
+                    {
+                        warnings.Add(string.Create(
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            $"{Path.GetFileName(half.OutputPath)} leaves out {half.IslandsRemoved} island(s) of steel smaller than one voxel ({half.IslandVolumeMm3:0.####} mm3 in all): voxel debris where a face of the part lies within mesh noise of the parting plane."));
+                    }
 
                     return new FunctionalMoldHalvesResult(moving, fixedHalf, overlapVolume, request.VoxelSizeMm, warnings);
                 }
@@ -135,7 +144,20 @@ public sealed class PicoFunctionalMoldHalvesGenerator
 
         voxels.CalculateProperties(out var finalVolume, out var box);
         using var mesh = voxels.mshAsMesh();
-        mesh.SaveToStlFile(path, PicoMesh.EStlUnit.MM, null, 1.0f);
+
+        // The file leaves out islands smaller than one voxel: where a face of the part lies within mesh noise of the
+        // parting plane, single voxel nodes between the two are steel of this half, cut off from the rest.
+        var triangles = new MeshTriangle[mesh.nTriangleCount()];
+
+        for (var i = 0; i < triangles.Length; i++)
+        {
+            mesh.GetTriangle(i, out var a, out var b, out var c);
+            triangles[i] = new MeshTriangle(new MeshVertex(a.X, a.Y, a.Z), new MeshVertex(b.X, b.Y, b.Z), new MeshVertex(c.X, c.Y, c.Z));
+        }
+
+        var voxelVolume = (double)request.VoxelSizeMm * request.VoxelSizeMm * request.VoxelSizeMm;
+        var (kept, islands, islandVolume) = MeshIslands.Remove(triangles, voxelVolume);
+        BinaryStlTriangleWriter.Write(path, kept);
 
         var (min, max) = request.SplitAxis switch
         {
@@ -153,7 +175,9 @@ public sealed class PicoFunctionalMoldHalvesGenerator
             systems,
             min,
             max,
-            mesh.nTriangleCount());
+            kept.Count,
+            islands,
+            islandVolume);
 
         return (result, voxels);
     }
