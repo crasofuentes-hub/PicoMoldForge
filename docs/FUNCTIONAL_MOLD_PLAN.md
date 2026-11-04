@@ -319,6 +319,29 @@ Third Windows run (commit 1636428): every step ran.
   - Checked here on real halves from the Windows run, with three 0.05 mm islands added: the islands go and every
     triangle of the half stays.
 
+Fourth Windows run (commit 8332b78): every step ran.
+
+- All 583 tests pass.
+- Each of the twelve halves is one closed piece, with no edge in more than two triangles.
+- The monoblock's moving half left out 3 islands under one voxel (0.0011 mm3 in all), the three the voxel model
+  predicted.
+- In all six molds, every one of the 508 axis points agrees with the plan.
+- Verdicts: the box and the spur gear PASS (the box with its cooling warning). The other four FAIL only on two halves.
+
+Rule refuted on that run: "the slide travel of a zone is the longest travel of its faces".
+
+- On the piston, a ring groove 2.6 mm deep is 99 % freed by 2.91 mm, but one face of 0.18 mm2 read 11.65 mm.
+- On the monoblock, the bore through the 10 mm bulkhead reads 5.06 mm for 95 % of its area (half the bulkhead) and
+  9.5 mm at its longest face.
+- The flange's cross hole read 9.96 mm on Linux and 7.02 mm on Windows: the longest face changes with the mesh.
+- An exact turned groove of the same size gives at most 2.57 mm on every face. The outliers come from single faces of
+  the real meshes.
+- Now: a zone quotes the travel that frees 95 % of its area, the share the trapped area is judged by. It adds the
+  longest when that is more than 10 % (+ 0.1 mm) larger, for example "at least 2.55 mm of travel for 95 % of its area
+  (up to 11.65 mm for the rest)". `MoldTrappedZone.SideTravelMm` is that 95 % figure and `MaximumSideTravelMm` the
+  longest. A zone is below the resolution only when its longest face is (test
+  `Zone_QuotesTheTravelThatFreesNinetyFivePercentOfIt`).
+
 The touching-faces fix of Parts (field zeros classified by a nudge, so touching features join) is merged with an
 edge-midpoint guard in the simplifier. Without the guard, the flange left rim chords 0.2675 mm off the surface;
 with it, the flange stays within 0.1002 mm and all five samples pass every check.
